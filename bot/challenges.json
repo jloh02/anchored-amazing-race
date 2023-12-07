@@ -1,0 +1,28 @@
+{
+  "standard": {
+    "Toa Payoh": {
+      "order": 0,
+      "challenges": [
+        {
+          "description": "Visit the hexagonal bridge feature across the pond in toa payoh park count the number of hexagons. Perform a dance together that is the number of hexagons * 5 seconds long. eg if there are 5 hexagons, dance up till the 25s mark of the song.\nVideo link: https://youtu.be/Qj1u3Uke_00?si=fOX-vefyQI1ysCRR"
+        },
+        {
+          "description": "You have been given a 6x5 piece jigsaw puzzle. Piece together the jigsaw puzzle, recreate the exact same picture of it."
+        }
+      ]
+    },
+    "Bishan": {
+      "order": 1,
+      "challenges": [
+        {
+          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word."
+        }
+      ]
+    }
+  },
+  "sabotage": [
+    "Photograph 3 buses pulling into a bus stop",
+    "Sing any part of camp theme song for 30s",
+    "Whole group to go down a slide together"
+  ]
+}

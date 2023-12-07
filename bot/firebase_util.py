@@ -1,5 +1,6 @@
 import os
 import json
+import datetime
 import firebase_admin
 from constants import Role
 from firebase_admin import credentials, firestore
@@ -31,14 +32,45 @@ def reset():
                 db.collection("users").document(user).set(
                     {"registered": False, "group": group_ref}
                 )
+    with open("challenges.json") as f:
+        challs = json.loads(f.read())
+        standard_challs = challs["standard"]
+        for key in standard_challs:
+            db.collection("challenges").document(key).set(standard_challs[key])
+        db.collection("challenges").document("sabotage").set(
+            {"challenges": challs["sabotage"]}
+        )
 
 
 def get_role(username: str) -> Role:
-    if db.collection("admins").document(username).get().exists:
+    user = db.collection("users").document(username).get()
+    if user.exists and user.to_dict()["registered"]:
+        return Role.GL
+    admin = db.collection("admins").document(username).get()
+    if admin.exists and admin.to_dict()["registered"]:
         return Role.Admin
-    if not db.collection("users").document(username).get().exists:
-        return Role.Unregistered
-    return Role.GL
+    return Role.Unregistered
+
+
+def set_location(username, lat, lng):
+    db.collection("users").document(username).update(
+        {
+            "location": firestore.firestore.GeoPoint(lat, lng),
+            "last_update": firestore.SERVER_TIMESTAMP,
+        }
+    )
+
+
+# last 5 minutes
+def recent_location_update(username) -> bool:
+    user = db.collection("users").document(username).get().to_dict()
+    return (
+        user["location"]
+        and (
+            datetime.datetime.now(datetime.timezone.utc) - user["last_update"]
+        ).total_seconds()
+        < 300
+    )
 
 
 def register_admin(username: str) -> Role:

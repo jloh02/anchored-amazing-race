@@ -5,6 +5,7 @@ import logging
 from constants import Role, ConvState
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
 from telegram._utils.types import SCT
+from telegram.constants import ChatType
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -43,13 +44,29 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    message = update.message if update.message else update.edited_message
+    firebase_util.set_location(
+        message.from_user.username,
+        message.location.latitude,
+        message.location.longitude,
+    )
     return ConversationHandler.END
 
 
-def dm_only_command(callback) -> SCT:
+async def start_race(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if not firebase_util.recent_location_update(update.message.from_user.username):
+        await update.message.reply_text("Please ensure your location is updated!")
+        return ConversationHandler.END
+    await update.message.reply_text("STARTING?")
+    return ConversationHandler.END
+
+
+def dm_only_command(callback, quiet=False) -> SCT:
     async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        if update.message.chat_id != update.message.from_user.id:
-            await update.message.reply_text("This command only works in DM")
+        message = update.message if update.message else update.edited_message
+        if message.chat.type != ChatType.PRIVATE:
+            if not quiet:
+                await message.reply_text("This command only works in DMs")
             return ConversationHandler.END
         return await callback(update, context)
 
@@ -58,18 +75,19 @@ def dm_only_command(callback) -> SCT:
 
 def role_context_command(callback) -> SCT:
     async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        context.user_data["role"] = firebase_util.get_role(
-            update.message.from_user.username
-        )
+        message = update.message if update.message else update.edited_message
+        context.user_data["role"] = firebase_util.get_role(message.from_user.username)
         return await callback(update, context)
 
     return fn
 
 
-def role_restricted_command(callback, allow: list[Role]) -> SCT:
+def role_restricted_command(callback, allow: list[Role], quiet=False) -> SCT:
     async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        message = update.message if update.message else update.edited_message
         if not context.user_data["role"] in allow:
-            await update.message.reply_text("Unauthorized User")
+            if not quiet:
+                await message.reply_text("Unauthorized User")
             return ConversationHandler.END
         return await callback(update, context)
 
@@ -83,7 +101,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     firebase_util.reset()
-    await update.message.reply_text("Resetting game state")
+    await update.message.reply_text("Resetted game state")
     return ConversationHandler.END
 
 
@@ -98,9 +116,18 @@ def main() -> None:
         entry_points=[
             CommandHandler("start", dm_only_command(role_context_command(start))),
             MessageHandler(
-                filters.LOCATION, role_restricted_command(location, [Role.GL])
+                filters.LOCATION,
+                dm_only_command(
+                    role_restricted_command(location, [Role.GL], quiet=True), quiet=True
+                ),
             ),
-            CommandHandler("reset", role_restricted_command(reset, [Role.Admin])),
+            CommandHandler(
+                "reset", dm_only_command(role_restricted_command(reset, [Role.Admin]))
+            ),
+            CommandHandler(
+                "startrace",
+                dm_only_command(role_restricted_command(start_race, [Role.GL])),
+            ),
         ],
         states={
             # ConvState.Menu: [
