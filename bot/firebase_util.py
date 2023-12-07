@@ -2,7 +2,7 @@ import os
 import json
 import datetime
 import firebase_admin
-from constants import Role
+from constants import Role, Direction
 from firebase_admin import credentials, firestore
 
 db = None
@@ -47,7 +47,7 @@ def get_role(username: str) -> Role:
     if user.exists and user.to_dict()["registered"]:
         return Role.GL
     admin = db.collection("admins").document(username).get()
-    if admin.exists and admin.to_dict()["registered"]:
+    if admin.exists:
         return Role.Admin
     return Role.Unregistered
 
@@ -56,7 +56,7 @@ def set_location(username, lat, lng):
     db.collection("users").document(username).update(
         {
             "location": firestore.firestore.GeoPoint(lat, lng),
-            "last_update": firestore.SERVER_TIMESTAMP,
+            "last_update": firestore.firestore.SERVER_TIMESTAMP,
         }
     )
 
@@ -73,9 +73,26 @@ def recent_location_update(username) -> bool:
     )
 
 
-def register_admin(username: str) -> Role:
+def start_race(username, direction: Direction):
+    group_ref = db.collection("users").document(username).get().to_dict()["group"]
+    group_ref.update(
+        {
+            "start_time": firestore.firestore.SERVER_TIMESTAMP,
+            "direction": str(direction),
+        }
+    )
+
+
+def register_admin(username: str):
     db.collection("admins").document(username).update({"registered": True})
 
 
-def register_user(username: str) -> Role:
+def set_broadcast_group(username: str, chatid: int):
+    db.collection("users").document(username).get().to_dict()["group"].update(
+        {"broadcast_channel": chatid}
+    )
+
+
+def register_user(username: str, userid: int):
     db.collection("users").document(username).update({"registered": True})
+    set_broadcast_group(username, userid)
