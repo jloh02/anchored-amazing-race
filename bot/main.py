@@ -33,9 +33,7 @@ logger = logging.getLogger(__name__)
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     if context.user_data["role"] == Role.Admin:
         firebase_util.register_admin(update.message.from_user.username)
-        await update.message.reply_text(
-            "All aboard! You can start using this amazing bot!"
-        )
+        await update.message.reply_text("Welcome back admin!")
         return ConversationHandler.END
 
     if context.user_data["role"] != Role.Unregistered:
@@ -93,6 +91,11 @@ async def config_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def start_race(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    if firebase_util.has_race_started(update.message.from_user.username):
+        await update.message.reply_text(
+            "Your race has already started! Stop wasting time!"
+        )
+        return ConversationHandler.END
     if not firebase_util.recent_location_update(update.message.from_user.username):
         await update.message.reply_text("Please ensure your location is updated!")
         return ConversationHandler.END
@@ -126,10 +129,21 @@ async def confirm_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         return ConversationHandler.END
 
     await query.edit_message_text(
-        text=f"The hunt begins!\n\nDirection {query.data[0]}, Toa Payoh {'First' if query.data[1] else 'Last'}",
+        text=f"The race begins!\n\nDirection {query.data[0]}, Toa Payoh {'First' if query.data[1] else 'Last'}",
         reply_markup=None,
     )
-    firebase_util.start_race(query.from_user.username, query.data)
+
+    group_info = firebase_util.start_race(query.from_user.username, query.data)
+    await context.bot.send_message(
+        group_info["broadcast_channel"],
+        f"Ahoy! The treasure hunt begins!\n\nRoute Chosen: Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] else 'Last'}",
+    )
+
+    await context.bot.send_message(
+        firebase_util.get_admin_broadcast(),
+        f"{group_info['name']} has started the race",
+    )
+
     return ConversationHandler.END
 
 
@@ -186,7 +200,8 @@ def main() -> None:
         entry_points=[
             CommandHandler("start", dm_only_command(role_context_command(start))),
             CommandHandler(
-                "configgroup", role_restricted_command(config_group, [Role.GL])
+                "configgroup",
+                role_restricted_command(config_group, [Role.GL]),
             ),
             MessageHandler(
                 filters.LOCATION,

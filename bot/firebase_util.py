@@ -19,10 +19,14 @@ def init():
 
 def reset():
     with open("groups.txt") as f:
-        for idx, x in enumerate(list(filter(lambda x: len(x), f.readlines()))):
+        for idx, x in enumerate(
+            list(filter(lambda x: len(x), map(lambda x: x.strip(), f.readlines())))
+        ):
             db.collection("groups").document(f"{idx + 1}").set({"name": x})
     with open("admins.txt") as f:
-        for x in list(filter(lambda x: len(x), f.readlines())):
+        for x in list(
+            filter(lambda x: len(x), map(lambda x: x.strip(), f.readlines()))
+        ):
             db.collection("admins").document(x).set({"registered": False})
     with open("gls.json") as f:
         gl = json.loads(f.read())
@@ -47,12 +51,12 @@ def get_role(username: str) -> Role:
     if user.exists and user.to_dict()["registered"]:
         return Role.GL
     admin = db.collection("admins").document(username).get()
-    if admin.exists:
+    if admin.exists and admin.to_dict()["registered"]:
         return Role.Admin
     return Role.Unregistered
 
 
-def set_location(username, lat, lng):
+def set_location(username: str, lat: float, lng: float):
     db.collection("users").document(username).update(
         {
             "location": firestore.firestore.GeoPoint(lat, lng),
@@ -62,7 +66,7 @@ def set_location(username, lat, lng):
 
 
 # last 5 minutes
-def recent_location_update(username) -> bool:
+def recent_location_update(username: str) -> bool:
     user = db.collection("users").document(username).get().to_dict()
     return (
         user["location"]
@@ -73,7 +77,21 @@ def recent_location_update(username) -> bool:
     )
 
 
-def start_race(username, direction: Direction):
+def has_race_started(username: str) -> bool:
+    try:
+        return bool(
+            db.collection("users")
+            .document(username)
+            .get()
+            .to_dict()["group"]
+            .get()
+            .to_dict()["start_time"]
+        )
+    except KeyError:
+        return False
+
+
+def start_race(username: str, direction: Direction) -> dict | None:
     group_ref = db.collection("users").document(username).get().to_dict()["group"]
     group_ref.update(
         {
@@ -81,6 +99,7 @@ def start_race(username, direction: Direction):
             "direction": str(direction),
         }
     )
+    return group_ref.get().to_dict()
 
 
 def register_admin(username: str):
@@ -91,6 +110,10 @@ def set_broadcast_group(username: str, chatid: int):
     db.collection("users").document(username).get().to_dict()["group"].update(
         {"broadcast_channel": chatid}
     )
+
+
+def get_admin_broadcast() -> int:
+    return db.collection("admins").document("_globals").get().to_dict()["broadcast"]
 
 
 def register_user(username: str, userid: int):
