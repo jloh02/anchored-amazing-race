@@ -118,14 +118,14 @@ def start_race(username: str, direction: Direction) -> dict | None:
         {
             "start_time": firestore.firestore.SERVER_TIMESTAMP,
             "current_location": get_start_chall_index(direction),
-            "current_task": 0,
+            "challenges_completed": 0,
             "direction": str(direction),
         }
     )
     return group_ref.get().to_dict()
 
 
-def get_current_challenge(username: str):
+def get_current_challenge(username: str) -> tuple[str | dict]:
     group = get_user_group(username).get().to_dict()
     for doc in (
         db.collection("challenges")
@@ -137,4 +137,13 @@ def get_current_challenge(username: str):
         .limit(1)
         .stream()
     ):
-        return doc.to_dict()["challenges"][group["current_task"]]
+        return doc.id, doc.to_dict()["challenges"]
+
+
+def get_current_step(location: str, challenge_num: int, step_number: int):
+    return (
+        db.collection("challenges")
+        .document(location)
+        .get()
+        .to_dict()["challenges"][challenge_num]["steps"][step_number]
+    )

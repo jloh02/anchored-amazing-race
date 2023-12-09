@@ -2,8 +2,8 @@ from dotenv import load_dotenv
 import os
 import firebase_util
 import logging
-import challenges
-from constants import Role, ConvState, Direction
+from functools import reduce
+from constants import Role, ConvState, Direction, ChallengeType
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update, Bot
 from telegram._utils.types import SCT
 from telegram.constants import ChatType
@@ -122,11 +122,18 @@ async def choose_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return ConvState.ChooseDirectionConfirmation
 
 
-async def send_challenge(bot: Bot, chat_id: int, challenge):
+async def send_challenges(bot: Bot, chat_id: int, loc: str, challenges):
     # image = challenge.get("image")
     # if image:
     #   bot.send_photo(challenge[""])
-    await bot.send_message(chat_id, challenge["description"])
+    await bot.send_message(
+        chat_id,
+        reduce(
+            lambda acc, iv: acc + f"Challenge #{iv[0]+1}:\n{iv[1]['description']}\n\n",
+            enumerate(challenges),
+            f"Challenges for {loc}\n---------------------------------------------\n\n",
+        ),
+    )
 
 
 async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -147,11 +154,12 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         f"Ahoy! The treasure hunt begins!\n\nRoute Chosen: Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] else 'Last'}",
     )
 
-    challenge = challenges.get_current_challenge(query.from_user.username)
+    loc, challenge = firebase_util.get_current_challenge(query.from_user.username)
 
-    await send_challenge(
+    await send_challenges(
         context.bot,
         group_info["broadcast_channel"],
+        loc,
         challenge,
     )
 
@@ -160,6 +168,72 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         f"{group_info['name']} has started the race",
     )
 
+    return ConversationHandler.END
+
+
+async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    location, challenge = firebase_util.get_current_challenge(
+        update.message.from_user.username
+    )
+    await update.message.reply_text(
+        text=f"Which challenge do you want to submit?",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        f"Challenge #{i}", callback_data=f"{i}_{location}"
+                    )
+                ]
+                for i in range(len(challenge))
+            ]
+        ),
+    )
+    return ConvState.SelectChallenge
+
+
+async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    chall_num, chall_loc = query.data.split("_", 1)
+    chall_num = int(chall_num)
+    context.user_data["challenge_number"], context.user_data["challenge_location"] = (
+        chall_num,
+        chall_loc,
+    )
+    context.user_data["step_number"] = 0
+
+    step = firebase_util.get_current_step(chall_loc, chall_num, 0)
+    context.user_data["waiting_messages"] = step["num_messages"]
+    chall_type = ChallengeType[step["type"]]
+
+    await query.edit_message_text(
+        text=step["description"],
+        reply_markup=None,
+    )
+    if chall_type == ChallengeType.Text:
+        return ConvState.SubmitText
+    elif chall_type == ChallengeType.Video:
+        return ConvState.SubmitVideo
+    elif chall_type == ChallengeType.Photo:
+        return ConvState.SubmitPhoto
+    # Fallback for idk why
+    logger.error(f"Unknown chall_type {step['type']}")
+    return ConversationHandler.END
+
+
+async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    step = firebase_util.get_current_step(
+        context.user_data["challenge_location"],
+        context.user_data["challenge_number"],
+        context.user_data["step_number"],
+    )
+
+    if step["answer"] != update.message.text.strip():
+        await update.message.reply_text("Incorrect answer")
+        return ConvState.SubmitText
+
+    await update.message.reply_text("Correct answer")
     return ConversationHandler.END
 
 
@@ -190,6 +264,19 @@ def role_restricted_command(callback, allow: list[Role], quiet=False) -> SCT:
         if not context.user_data["role"] in allow:
             if not quiet:
                 await message.reply_text("Unauthorized User")
+            return ConversationHandler.END
+        return await callback(update, context)
+
+    return role_context_command(fn)
+
+
+def race_started_only_command(callback) -> SCT:
+    async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        message = update.message if update.message else update.edited_message
+        if not firebase_util.has_race_started(message.from_user.username):
+            await message.reply_text(
+                "The race hasn't started! What are you doing? Stop trying to hack me plsss!"
+            )
             return ConversationHandler.END
         return await callback(update, context)
 
@@ -235,13 +322,24 @@ def main() -> None:
                 "startrace",
                 dm_only_command(role_restricted_command(start_race, [Role.GL])),
             ),
-            CommandHandler,
+            CommandHandler(
+                "submit",
+                dm_only_command(
+                    role_restricted_command(
+                        race_started_only_command(submit_challenge), [Role.GL]
+                    )
+                ),
+            ),
         ],
         states={
             ConvState.ChooseDirection: [CallbackQueryHandler(choose_direction)],
             ConvState.ChooseDirectionConfirmation: [
                 CallbackQueryHandler(confirm_direction)
             ],
+            ConvState.SelectChallenge: [CallbackQueryHandler(select_challenge)],
+            ConvState.SubmitText: [MessageHandler(filters.Text(), submit_text)],
+            ConvState.SubmitPhoto: [],
+            ConvState.SubmitVideo: []
             # ConvState.Menu: [
             #     CallbackQueryHandler(fn, pattern=f"^{cmd}$")
             #     for cmd, fn in MENU_DICT.items()

@@ -11,6 +11,16 @@ class ConvState(str, Enum):
     ChooseDirection = "ChooseDirection"
     ChooseDirectionConfirmation = "ChooseDirectionConfirmation"
     ChooseDirectionConfirmationNo = "ChooseDirectionConfirmationNo"
+    SelectChallenge = "SelectChallenge"
+    SubmitText = "SubmitText"
+    SubmitPhoto = "SubmitPhoto"
+    SubmitVideo = "SubmitVideo"
+
+
+class ChallengeType(str, Enum):
+    Text = "Text"
+    Photo = "Photo"
+    Video = "Video"
 
 
 class Direction(str, Enum):

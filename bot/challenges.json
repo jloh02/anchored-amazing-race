@@ -8,17 +8,26 @@
           "steps": [
             {
               "num_messages": 1,
-              "type": "text",
+              "description": "How many hexagon platforms are there?",
+              "type": "Text",
               "answer": "40"
             },
             {
               "num_messages": 1,
-              "type": "video"
+              "description": "Send your dance video",
+              "type": "Video"
             }
           ]
         },
         {
-          "description": "You have been given a 6x5 piece jigsaw puzzle. Piece together the jigsaw puzzle, recreate the exact same picture of it."
+          "description": "You have been given a 6x5 piece jigsaw puzzle. Piece together the jigsaw puzzle, recreate the exact same picture of it.",
+          "steps": [
+            {
+              "num_messages": 1,
+              "description": "Send the photo",
+              "type": "Photo"
+            }
+          ]
         }
       ]
     },
@@ -26,7 +35,14 @@
       "order": 1,
       "challenges": [
         {
-          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word."
+          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
+          "steps": [
+            {
+              "num_messages": 1,
+              "description": "Send the photo",
+              "type": "Photo"
+            }
+          ]
         }
       ]
     },
@@ -34,7 +50,14 @@
       "order": 2,
       "challenges": [
         {
-          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word."
+          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
+          "steps": [
+            {
+              "num_messages": 1,
+              "description": "Send the photo",
+              "type": "Photo"
+            }
+          ]
         }
       ]
     },
@@ -42,7 +65,14 @@
       "order": 3,
       "challenges": [
         {
-          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word."
+          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
+          "steps": [
+            {
+              "num_messages": 1,
+              "description": "Send the photo",
+              "type": "Photo"
+            }
+          ]
         }
       ]
     },
@@ -50,7 +80,14 @@
       "order": 4,
       "challenges": [
         {
-          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word."
+          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
+          "steps": [
+            {
+              "num_messages": 1,
+              "description": "Send the photo",
+              "type": "Photo"
+            }
+          ]
         }
       ]
     }
