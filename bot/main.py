@@ -2,8 +2,9 @@ from dotenv import load_dotenv
 import os
 import firebase_util
 import logging
+import challenges
 from constants import Role, ConvState, Direction
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update, Bot
 from telegram._utils.types import SCT
 from telegram.constants import ChatType
 from telegram.ext import (
@@ -121,7 +122,14 @@ async def choose_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return ConvState.ChooseDirectionConfirmation
 
 
-async def confirm_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+async def send_challenge(bot: Bot, chat_id: int, challenge):
+    # image = challenge.get("image")
+    # if image:
+    #   bot.send_photo(challenge[""])
+    await bot.send_message(chat_id, challenge["description"])
+
+
+async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
     if query.data == "cancel":
@@ -137,6 +145,14 @@ async def confirm_location(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     await context.bot.send_message(
         group_info["broadcast_channel"],
         f"Ahoy! The treasure hunt begins!\n\nRoute Chosen: Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] else 'Last'}",
+    )
+
+    challenge = challenges.get_current_challenge(query.from_user.username)
+
+    await send_challenge(
+        context.bot,
+        group_info["broadcast_channel"],
+        challenge,
     )
 
     await context.bot.send_message(
@@ -210,7 +226,10 @@ def main() -> None:
                 ),
             ),
             CommandHandler(
-                "reset", dm_only_command(role_restricted_command(reset, [Role.Admin]))
+                "reset",
+                dm_only_command(
+                    role_restricted_command(reset, [Role.Admin, Role.GL])
+                ),  # TODO change this to admin only
             ),
             CommandHandler(
                 "startrace",
@@ -221,7 +240,7 @@ def main() -> None:
         states={
             ConvState.ChooseDirection: [CallbackQueryHandler(choose_direction)],
             ConvState.ChooseDirectionConfirmation: [
-                CallbackQueryHandler(confirm_location)
+                CallbackQueryHandler(confirm_direction)
             ],
             # ConvState.Menu: [
             #     CallbackQueryHandler(fn, pattern=f"^{cmd}$")

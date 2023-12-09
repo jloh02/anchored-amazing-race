@@ -46,6 +46,27 @@ def reset():
         )
 
 
+def set_broadcast_group(username: str, chatid: int):
+    get_user_group(username).update({"broadcast_channel": chatid})
+
+
+def get_admin_broadcast() -> int:
+    return db.collection("admins").document("_globals").get().to_dict()["broadcast"]
+
+
+def register_user(username: str, userid: int):
+    db.collection("users").document(username).update({"registered": True})
+    set_broadcast_group(username, userid)
+
+
+def register_admin(username: str):
+    db.collection("admins").document(username).update({"registered": True})
+
+
+def get_user_group(username: str) -> str | None:
+    return db.collection("users").document(username).get().to_dict()["group"]
+
+
 def get_role(username: str) -> Role:
     user = db.collection("users").document(username).get()
     if user.exists and user.to_dict()["registered"]:
@@ -68,54 +89,52 @@ def set_location(username: str, lat: float, lng: float):
 # last 5 minutes
 def recent_location_update(username: str) -> bool:
     user = db.collection("users").document(username).get().to_dict()
-    return (
-        user["location"]
-        and (
-            datetime.datetime.now(datetime.timezone.utc) - user["last_update"]
-        ).total_seconds()
-        < 300
-    )
-
-
-def has_race_started(username: str) -> bool:
     try:
-        return bool(
-            db.collection("users")
-            .document(username)
-            .get()
-            .to_dict()["group"]
-            .get()
-            .to_dict()["start_time"]
+        return (
+            user["location"]
+            and (
+                datetime.datetime.now(datetime.timezone.utc) - user["last_update"]
+            ).total_seconds()
+            < 300
         )
     except KeyError:
         return False
 
 
+def has_race_started(username: str) -> bool:
+    try:
+        return bool(get_user_group(username).get().to_dict()["start_time"])
+    except KeyError:
+        return False
+
+
+def get_start_chall_index(direction: Direction) -> int:
+    return 0 if str(direction)[1] == "1" else (1 if direction == Direction.A0 else 4)
+
+
 def start_race(username: str, direction: Direction) -> dict | None:
-    group_ref = db.collection("users").document(username).get().to_dict()["group"]
+    group_ref = get_user_group(username)
     group_ref.update(
         {
             "start_time": firestore.firestore.SERVER_TIMESTAMP,
+            "current_location": get_start_chall_index(direction),
+            "current_task": 0,
             "direction": str(direction),
         }
     )
     return group_ref.get().to_dict()
 
 
-def register_admin(username: str):
-    db.collection("admins").document(username).update({"registered": True})
-
-
-def set_broadcast_group(username: str, chatid: int):
-    db.collection("users").document(username).get().to_dict()["group"].update(
-        {"broadcast_channel": chatid}
-    )
-
-
-def get_admin_broadcast() -> int:
-    return db.collection("admins").document("_globals").get().to_dict()["broadcast"]
-
-
-def register_user(username: str, userid: int):
-    db.collection("users").document(username).update({"registered": True})
-    set_broadcast_group(username, userid)
+def get_current_challenge(username: str):
+    group = get_user_group(username).get().to_dict()
+    for doc in (
+        db.collection("challenges")
+        .where(
+            filter=firestore.firestore.FieldFilter(
+                "order", "==", group["current_location"]
+            )
+        )
+        .limit(1)
+        .stream()
+    ):
+        return doc.to_dict()["challenges"][group["current_task"]]
