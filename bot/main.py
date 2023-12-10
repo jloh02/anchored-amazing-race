@@ -32,8 +32,16 @@ logging.basicConfig(
 )
 # set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.getLogger("httpx").setLevel(logging.WARNING)
-
 logger = logging.getLogger(__name__)
+
+bot = Bot(os.environ.get("TELEGRAM_BOT_KEY"))
+bot.set_my_commands(
+    ["start", "Register user"],
+    ["configgroup", "Use current chat for group updates"],
+    ["startrace", "Start the race (Only when told to do so)"],
+    ["submit", "Attempt a challenge"],
+    ["endrace", "Only press at finish line"],
+)
 
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -147,7 +155,7 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         return ConversationHandler.END
 
     await query.edit_message_text(
-        text=f"The race begins!\n\nDirection {query.data[0]}, Toa Payoh {'First' if query.data[1] else 'Last'}",
+        text=f"The race begins!\n\nDirection {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
         reply_markup=None,
     )
 
@@ -158,7 +166,7 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     await context.bot.send_message(
         group_info["broadcast_channel"],
-        f"Ahoy! The treasure hunt begins!\n\nRoute Chosen: Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] else 'Last'}",
+        f"Ahoy! The treasure hunt begins!\n\nRoute Chosen: Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
     )
 
     await send_challenges(
@@ -246,7 +254,7 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
 
     if step:
-        await update.message.reply_text(step["description"], reply_markup=None)
+        await update.message.reply_text(step["description"])
         return challenge_type_to_conv_state(ChallengeType[step["type"]])
 
     challs_left = firebase_util.complete_challenge(
@@ -254,6 +262,7 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         context.user_data["challenge_location"],
         context.user_data["challenge_number"],
     )
+    await update.message.reply_text("Challenge completed!")
 
     if challs_left <= 0:
         group_info, loc, challenge = firebase_util.next_location(
@@ -262,7 +271,7 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         if not challenge:
             await context.bot.send_message(
                 group_info["broadcast_channel"],
-                "Head back to the endpoint! GO GO GO!",
+                "Head back to the endpoint! GO GO GO! The treasure awaits you!",
             )
             return ConversationHandler.END
 
@@ -340,15 +349,6 @@ def main() -> None:
     application = (
         Application.builder().token(os.environ.get("TELEGRAM_BOT_KEY")).build()
     )
-
-    bot = Bot(os.environ.get("TELEGRAM_BOT_KEY"))
-    bot.set_my_commands(
-        ["start", "Register user"],
-        ["configgroup", "Use current chat for group updates"],
-        ["startrace", "Start the race (Only when told to do so)"],
-        ["submit", "Attempt a challenge"],
-        ["endrace", "Only press at finish line"],
-    ),
 
     conv_handler = ConversationHandler(
         entry_points=[
