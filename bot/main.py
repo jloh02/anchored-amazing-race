@@ -288,7 +288,6 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     return ConversationHandler.END
 
 
-# TODO filter challenges by challenges_completed
 async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info(
         f"@{update.message.from_user.username} submitted text: {update.message.text}"
