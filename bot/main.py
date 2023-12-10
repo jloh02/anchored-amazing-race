@@ -172,11 +172,18 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         firebase_util.get_admin_broadcast(),
         f"{group_info['name']} has started the race",
     )
+    logger.info(
+        f"@{query.from_user.username} selected direction for {group_info['name']}: {query.data}"
+    )
 
     return ConversationHandler.END
 
 
 async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(
+        f"@{update.message.from_user.username} attempting to submit a challenge"
+    )
+
     group_info, location, challenge = firebase_util.get_current_challenge(
         update.message.from_user.username
     )
@@ -205,7 +212,6 @@ def challenge_type_to_conv_state(chall_type: ChallengeType):
         return ConvState.SubmitPhoto
 
 
-# TODO handle num_messages
 async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -260,7 +266,6 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
             )
             return ConversationHandler.END
 
-        print(group_info, loc, challenge)
         await send_challenges(
             context.bot,
             group_info["broadcast_channel"],
@@ -276,7 +281,10 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 # TODO filter challenges by challenges_completed
 async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    print("TXT")
+    logger.info(
+        f"@{update.message.from_user.username} submitted text: {update.message.text}"
+    )
+
     step = firebase_util.get_current_step(
         context.user_data["challenge_location"],
         context.user_data["challenge_number"],
@@ -291,7 +299,8 @@ async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
 
 async def submit_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    print("PHO")
+    logger.info(f"@{update.message.from_user.username} submitted photo")
+
     await context.bot.send_photo(
         firebase_util.get_admin_broadcast(),
         update.message.photo[-1]["file_id"],
@@ -301,7 +310,8 @@ async def submit_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> in
 
 
 async def submit_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    print("VID")
+    logger.info(f"@{update.message.from_user.username} submitted video")
+
     await context.bot.send_video(
         firebase_util.get_admin_broadcast(),
         update.message.video.file_id,
@@ -316,9 +326,14 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f"@{update.message.from_user.username} resetted the game state")
+
     firebase_util.reset()
     await update.message.reply_text("Resetted game state")
     return ConversationHandler.END
+
+
+COMMANDS = []
 
 
 def main() -> None:
@@ -326,18 +341,21 @@ def main() -> None:
         Application.builder().token(os.environ.get("TELEGRAM_BOT_KEY")).build()
     )
 
+    bot = Bot(os.environ.get("TELEGRAM_BOT_KEY"))
+    bot.set_my_commands(
+        ["start", "Register user"],
+        ["configgroup", "Use current chat for group updates"],
+        ["startrace", "Start the race (Only when told to do so)"],
+        ["submit", "Attempt a challenge"],
+        ["endrace", "Only press at finish line"],
+    ),
+
     conv_handler = ConversationHandler(
         entry_points=[
             CommandHandler("start", dm_only_command(role_context_command(start))),
             CommandHandler(
                 "configgroup",
                 role_restricted_command(config_group, [Role.GL]),
-            ),
-            MessageHandler(
-                filters.LOCATION,
-                dm_only_command(
-                    role_restricted_command(location, [Role.GL], quiet=True), quiet=True
-                ),
             ),
             CommandHandler(
                 "reset",
@@ -355,6 +373,12 @@ def main() -> None:
                     role_restricted_command(
                         race_started_only_command(submit_challenge), [Role.GL]
                     )
+                ),
+            ),
+            MessageHandler(
+                filters.LOCATION,
+                dm_only_command(
+                    role_restricted_command(location, [Role.GL], quiet=True), quiet=True
                 ),
             ),
         ],

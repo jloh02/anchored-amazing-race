@@ -138,14 +138,6 @@ def get_current_challenge(username: str) -> tuple[str | dict]:
         .stream()
     ):
         challs = doc.to_dict()["challenges"]
-        print(
-            list(
-                filter(
-                    lambda iv: iv[0] not in group["challenges_completed"],
-                    enumerate(challs),
-                )
-            )
-        )
 
         return (
             group,
@@ -178,8 +170,6 @@ def next_location(
     group_ref.update(
         {"current_location": new_location_index, "challenges_completed": []}
     )
-
-    print(new_location_index, get_start_chall_index(direction), direction)
 
     if new_location_index == get_start_chall_index(direction):  # Loop completed
         return group, None, None
