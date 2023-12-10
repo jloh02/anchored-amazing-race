@@ -1,12 +1,8 @@
-from dotenv import load_dotenv
 import os
-import firebase_util
 import logging
 from functools import reduce
-from constants import Role, ConvState, Direction, ChallengeType
+from dotenv import load_dotenv
 from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update, Bot
-from telegram._utils.types import SCT
-from telegram.constants import ChatType
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -15,6 +11,15 @@ from telegram.ext import (
     ConversationHandler,
     MessageHandler,
     filters,
+)
+
+from constants import Role, ConvState, Direction, ChallengeType
+import firebase_util
+from middleware import (
+    dm_only_command,
+    role_context_command,
+    role_restricted_command,
+    race_started_only_command,
 )
 
 load_dotenv()
@@ -181,7 +186,7 @@ async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             [
                 [
                     InlineKeyboardButton(
-                        f"Challenge #{i}", callback_data=f"{i}_{location}"
+                        f"Challenge #{i+1}", callback_data=f"{i}_{location}"
                     )
                 ]
                 for i in range(len(challenge))
@@ -235,52 +240,6 @@ async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
 
     await update.message.reply_text("Correct answer")
     return ConversationHandler.END
-
-
-def dm_only_command(callback, quiet=False) -> SCT:
-    async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        message = update.message if update.message else update.edited_message
-        if message.chat.type != ChatType.PRIVATE:
-            if not quiet:
-                await message.reply_text("This command only works in DMs")
-            return ConversationHandler.END
-        return await callback(update, context)
-
-    return fn
-
-
-def role_context_command(callback) -> SCT:
-    async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        message = update.message if update.message else update.edited_message
-        context.user_data["role"] = firebase_util.get_role(message.from_user.username)
-        return await callback(update, context)
-
-    return fn
-
-
-def role_restricted_command(callback, allow: list[Role], quiet=False) -> SCT:
-    async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        message = update.message if update.message else update.edited_message
-        if not context.user_data["role"] in allow:
-            if not quiet:
-                await message.reply_text("Unauthorized User")
-            return ConversationHandler.END
-        return await callback(update, context)
-
-    return role_context_command(fn)
-
-
-def race_started_only_command(callback) -> SCT:
-    async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-        message = update.message if update.message else update.edited_message
-        if not firebase_util.has_race_started(message.from_user.username):
-            await message.reply_text(
-                "The race hasn't started! What are you doing? Stop trying to hack me plsss!"
-            )
-            return ConversationHandler.END
-        return await callback(update, context)
-
-    return role_context_command(fn)
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
