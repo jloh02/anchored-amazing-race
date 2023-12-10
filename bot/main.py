@@ -128,15 +128,13 @@ async def choose_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
 
 async def send_challenges(bot: Bot, chat_id: int, loc: str, challenges):
-    # image = challenge.get("image")
-    # if image:
-    #   bot.send_photo(challenge[""])
     await bot.send_message(
         chat_id,
         reduce(
-            lambda acc, iv: acc + f"Challenge #{iv[0]+1}:\n{iv[1]['description']}\n\n",
-            enumerate(challenges),
-            f"Challenges for {loc}\n---------------------------------------------\n\n",
+            lambda acc, iv: acc
+            + (f"Challenge #{iv[0]+1}:\n{iv[1]['description']}\n\n" if iv[1] else ""),
+            challenges,
+            f"Challenges for {loc}\n---------------------------------------------\n",
         ),
     )
 
@@ -153,13 +151,15 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         reply_markup=None,
     )
 
-    group_info = firebase_util.start_race(query.from_user.username, query.data)
+    firebase_util.start_race(query.from_user.username, query.data)
+    group_info, loc, challenge = firebase_util.get_current_challenge(
+        query.from_user.username
+    )
+
     await context.bot.send_message(
         group_info["broadcast_channel"],
         f"Ahoy! The treasure hunt begins!\n\nRoute Chosen: Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] else 'Last'}",
     )
-
-    loc, challenge = firebase_util.get_current_challenge(query.from_user.username)
 
     await send_challenges(
         context.bot,
@@ -177,7 +177,7 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
 
 async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    location, challenge = firebase_util.get_current_challenge(
+    group_info, location, challenge = firebase_util.get_current_challenge(
         update.message.from_user.username
     )
     await update.message.reply_text(
@@ -189,13 +189,23 @@ async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
                         f"Challenge #{i+1}", callback_data=f"{i}_{location}"
                     )
                 ]
-                for i in range(len(challenge))
+                for [i, chall] in challenge
             ]
         ),
     )
     return ConvState.SelectChallenge
 
 
+def challenge_type_to_conv_state(chall_type: ChallengeType):
+    if chall_type == ChallengeType.Text:
+        return ConvState.SubmitText
+    elif chall_type == ChallengeType.Video:
+        return ConvState.SubmitVideo
+    elif chall_type == ChallengeType.Photo:
+        return ConvState.SubmitPhoto
+
+
+# TODO handle num_messages
 async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -216,18 +226,57 @@ async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
         text=step["description"],
         reply_markup=None,
     )
-    if chall_type == ChallengeType.Text:
-        return ConvState.SubmitText
-    elif chall_type == ChallengeType.Video:
-        return ConvState.SubmitVideo
-    elif chall_type == ChallengeType.Photo:
-        return ConvState.SubmitPhoto
-    # Fallback for idk why
-    logger.error(f"Unknown chall_type {step['type']}")
+
+    return challenge_type_to_conv_state(chall_type)
+
+
+async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    context.user_data["step_number"] += 1
+
+    step = firebase_util.get_current_step(
+        context.user_data["challenge_location"],
+        context.user_data["challenge_number"],
+        context.user_data["step_number"],
+    )
+
+    if step:
+        await update.message.reply_text(step["description"], reply_markup=None)
+        return challenge_type_to_conv_state(ChallengeType[step["type"]])
+
+    challs_left = firebase_util.complete_challenge(
+        update.message.from_user.username,
+        context.user_data["challenge_location"],
+        context.user_data["challenge_number"],
+    )
+
+    if challs_left <= 0:
+        group_info, loc, challenge = firebase_util.next_location(
+            update.message.from_user.username
+        )
+        if not challenge:
+            await context.bot.send_message(
+                group_info["broadcast_channel"],
+                "Head back to the endpoint! GO GO GO!",
+            )
+            return ConversationHandler.END
+
+        print(group_info, loc, challenge)
+        await send_challenges(
+            context.bot,
+            group_info["broadcast_channel"],
+            loc,
+            challenge,
+        )
+        return ConversationHandler.END
+
+    await update.message.reply_text("Challenge completed")
+
     return ConversationHandler.END
 
 
+# TODO filter challenges by challenges_completed
 async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    print("TXT")
     step = firebase_util.get_current_step(
         context.user_data["challenge_location"],
         context.user_data["challenge_number"],
@@ -238,8 +287,27 @@ async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
         await update.message.reply_text("Incorrect answer")
         return ConvState.SubmitText
 
-    await update.message.reply_text("Correct answer")
-    return ConversationHandler.END
+    return await process_next_step(update, context)
+
+
+async def submit_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    print("PHO")
+    await context.bot.send_photo(
+        firebase_util.get_admin_broadcast(),
+        update.message.photo[-1]["file_id"],
+        f"Photo from @{update.message.from_user.username}",
+    )
+    return await process_next_step(update, context)
+
+
+async def submit_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    print("VID")
+    await context.bot.send_video(
+        firebase_util.get_admin_broadcast(),
+        update.message.video.file_id,
+        f"Photo from @{update.message.from_user.username}",
+    )
+    return await process_next_step(update, context)
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -296,13 +364,9 @@ def main() -> None:
                 CallbackQueryHandler(confirm_direction)
             ],
             ConvState.SelectChallenge: [CallbackQueryHandler(select_challenge)],
-            ConvState.SubmitText: [MessageHandler(filters.Text(), submit_text)],
-            ConvState.SubmitPhoto: [],
-            ConvState.SubmitVideo: []
-            # ConvState.Menu: [
-            #     CallbackQueryHandler(fn, pattern=f"^{cmd}$")
-            #     for cmd, fn in MENU_DICT.items()
-            # ],
+            ConvState.SubmitText: [MessageHandler(filters.TEXT, submit_text)],
+            ConvState.SubmitPhoto: [MessageHandler(filters.PHOTO, submit_photo)],
+            ConvState.SubmitVideo: [MessageHandler(filters.VIDEO, submit_video)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
     )

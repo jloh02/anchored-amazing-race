@@ -63,7 +63,7 @@ def register_admin(username: str):
     db.collection("admins").document(username).update({"registered": True})
 
 
-def get_user_group(username: str) -> str | None:
+def get_user_group(username: str) -> firestore.firestore.DocumentReference:
     return db.collection("users").document(username).get().to_dict()["group"]
 
 
@@ -118,7 +118,7 @@ def start_race(username: str, direction: Direction) -> dict | None:
         {
             "start_time": firestore.firestore.SERVER_TIMESTAMP,
             "current_location": get_start_chall_index(direction),
-            "challenges_completed": 0,
+            "challenges_completed": [],
             "direction": str(direction),
         }
     )
@@ -137,13 +137,75 @@ def get_current_challenge(username: str) -> tuple[str | dict]:
         .limit(1)
         .stream()
     ):
-        return doc.id, doc.to_dict()["challenges"]
+        challs = doc.to_dict()["challenges"]
+        print(
+            list(
+                filter(
+                    lambda iv: iv[0] not in group["challenges_completed"],
+                    enumerate(challs),
+                )
+            )
+        )
+
+        return (
+            group,
+            doc.id,
+            list(
+                filter(
+                    lambda iv: iv[0] not in group["challenges_completed"],
+                    enumerate(challs),
+                )
+            ),
+        )
 
 
-def get_current_step(location: str, challenge_num: int, step_number: int):
-    return (
-        db.collection("challenges")
-        .document(location)
-        .get()
-        .to_dict()["challenges"][challenge_num]["steps"][step_number]
+def next_location(
+    username: str,
+) -> tuple[dict | str | dict] | None:
+    group_ref = get_user_group(username)
+    group = group_ref.get().to_dict()
+    direction = Direction[group["direction"]]
+
+    new_location_index = group["current_location"] + (
+        1 if direction == Direction.A1 or direction == Direction.A0 else -1
     )
+
+    if new_location_index < 0:
+        new_location_index = 4
+    elif new_location_index > 4:
+        new_location_index = 0
+
+    group_ref.update(
+        {"current_location": new_location_index, "challenges_completed": []}
+    )
+
+    print(new_location_index, get_start_chall_index(direction), direction)
+
+    if new_location_index == get_start_chall_index(direction):  # Loop completed
+        return group, None, None
+
+    return get_current_challenge(username)
+
+
+def get_current_step(
+    location: str, challenge_num: int, step_number: int
+) -> dict | None:
+    try:
+        return (
+            db.collection("challenges")
+            .document(location)
+            .get()
+            .to_dict()["challenges"][challenge_num]["steps"][step_number]
+        )
+    except IndexError:
+        return None
+
+
+def complete_challenge(username: str, location: str, chall_num: int) -> bool:
+    group_ref = get_user_group(username)
+    group_ref.update(
+        {"challenges_completed": firestore.firestore.ArrayUnion([chall_num])}
+    )
+    return len(
+        db.collection("challenges").document(location).get().to_dict()["challenges"]
+    ) - len(group_ref.get().to_dict()["challenges_completed"])
