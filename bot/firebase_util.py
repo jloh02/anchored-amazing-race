@@ -257,10 +257,10 @@ async def wait_approval(id: str, timeout: int):
 
     await asyncio.wait_for(task_completed_event.wait(), timeout)
 
-    return output.get("approved")
+    return output.get("approved"), output.get("approver")
 
 
-def update_approval(id: str, approved: bool):
+def update_approval(id: str, approved: bool, username: str):
     db.collection("approvals").document(id).update(
-        {"status": True, "approved": approved}
+        {"status": True, "approved": approved, "approver": username}
     )

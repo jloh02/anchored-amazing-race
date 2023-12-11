@@ -236,10 +236,10 @@ async def start_approval_process(
     waiting_msg = await update.message.reply_text("Waiting for admin approval...")
 
     try:
-        result = await firebase_util.wait_approval(approval_id, 300)
+        result, approver = await firebase_util.wait_approval(approval_id, 300)
         if not result:
             await waiting_msg.edit_text(
-                "Waiting for admin approval...\n\nMan, you got rejected... Try sending another one! :("
+                f"Waiting for admin approval...\n\nMan, you got rejected by @{approver}... Try sending another one! :("
             )
             context.user_data.update({"photos": []})
             return loop_conv_state
@@ -252,7 +252,9 @@ async def start_approval_process(
             f"Haizzz, admins not paying attention... Ask @{update.message.from_user.username} to submit it again"
         )
         return loop_conv_state
-    await waiting_msg.edit_text("Waiting for admin approval... Approved by @!")
+    await waiting_msg.edit_text(
+        f"Waiting for admin approval... Approved by @{approver}!"
+    )
 
 
 async def submit_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -292,6 +294,6 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
     logger.info(
         f"@{query.from_user.username} {'rejected' if status != '1' else 'approved'} request {id} sent by @{gl_username}"
     )
-    firebase_util.update_approval(id, status == "1")
+    firebase_util.update_approval(id, status == "1", query.from_user.username)
 
     return ConversationHandler.END
