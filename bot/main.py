@@ -3,7 +3,14 @@ import logging
 import asyncio
 from functools import reduce
 from dotenv import load_dotenv
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update, Bot, BotCommand
+from telegram import (
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    Update,
+    Bot,
+    BotCommand,
+    InputMediaPhoto,
+)
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -241,6 +248,7 @@ async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             "challenge_number": chall_num,
             "challenge_location": chall_loc,
             "step_number": 0,
+            "photos": [],
         }
     )
 
@@ -319,34 +327,10 @@ async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return await process_next_step(update, context)
 
 
-async def start_approval_process(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, loop_conv_state: ConvState
-) -> int:
-    approval_id = firebase_util.generate_approval_request()
-
-    step = firebase_util.get_current_step(
-        context.user_data.get("challenge_location"),
-        context.user_data.get("challenge_number"),
-        context.user_data.get("step_number"),
-    )
-
-    media_id = (
-        update.message.photo[-1].file_id
-        if loop_conv_state == ConvState.SubmitPhoto
-        else update.message.video.file_id
-    )
-
-    send_fn = (
-        context.bot.send_photo
-        if loop_conv_state == ConvState.SubmitPhoto
-        else context.bot.send_video
-    )
-
-    msg = await send_fn(
-        firebase_util.get_admin_broadcast(),
-        media_id,
-        caption=f"Admins! 빨리주세요! Approve @{update.message.from_user.username} submission for {context.user_data.get('challenge_location')} Challenge #{context.user_data.get('challenge_number')} ({step.get('description')})\n\nRequest ID: {approval_id}",
-        reply_markup=InlineKeyboardMarkup(
+def get_approval_content(update, context, step, approval_id):
+    return (
+        f"Admins! 빨리주세요! Approve @{update.message.from_user.username} submission for {context.user_data.get('challenge_location')} Challenge #{context.user_data.get('challenge_number')} ({step.get('description')})\n\nRequest ID: {approval_id}",
+        InlineKeyboardMarkup(
             [
                 [
                     InlineKeyboardButton(
@@ -364,24 +348,92 @@ async def start_approval_process(
         ),
     )
 
-    await update.message.reply_text("Waiting for admin approval...")
+
+async def start_approval_process(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, loop_conv_state: ConvState
+) -> int:
+    step = firebase_util.get_current_step(
+        context.user_data.get("challenge_location"),
+        context.user_data.get("challenge_number"),
+        context.user_data.get("step_number"),
+    )
+
+    if (
+        loop_conv_state == ConvState.SubmitPhoto
+        and "num_photo" in step
+        and step["num_photo"] > 0
+    ):
+        context.user_data.update(
+            {"photos": context.user_data.get("photos") + [update.message.photo[-1]]}
+        )
+        photos = context.user_data.get("photos")
+        await update.message.reply_text(
+            f"{len(photos)}/{step['num_photo']} photos received"
+        )
+        if len(photos) != step["num_photo"]:
+            return ConvState.SubmitPhoto
+
+        approval_id = firebase_util.generate_approval_request()
+        APPROVAL_MESSAGE, APPROVAL_MARKUP = get_approval_content(
+            update, context, step, approval_id
+        )
+        await context.bot.send_media_group(
+            firebase_util.get_admin_broadcast(),
+            [InputMediaPhoto(p) for p in photos[:-1]],
+        )
+        approver_captioned_msg = await context.bot.send_photo(
+            firebase_util.get_admin_broadcast(),
+            photos[-1].file_id,
+            caption=APPROVAL_MESSAGE,
+            reply_markup=APPROVAL_MARKUP,
+        )
+        approver_captioned_msg_fn = approver_captioned_msg.edit_text
+    else:
+        media_id = (
+            update.message.photo[-1].file_id
+            if loop_conv_state == ConvState.SubmitPhoto
+            else update.message.video.file_id
+        )
+
+        send_fn = (
+            context.bot.send_photo
+            if loop_conv_state == ConvState.SubmitPhoto
+            else context.bot.send_video
+        )
+
+        approval_id = firebase_util.generate_approval_request()
+        APPROVAL_MESSAGE, APPROVAL_MARKUP = get_approval_content(
+            update, context, step, approval_id
+        )
+
+        approver_captioned_msg = await send_fn(
+            firebase_util.get_admin_broadcast(),
+            media_id,
+            caption=APPROVAL_MESSAGE,
+            reply_markup=APPROVAL_MARKUP,
+        )
+        approver_captioned_msg_fn = approver_captioned_msg.edit_caption
+
+    waiting_msg = await update.message.reply_text("Waiting for admin approval...")
 
     try:
         result = await firebase_util.wait_approval(approval_id, 300)
         if not result:
-            await update.message.reply_text(
-                "Man, you got rejected... Try sending another one! :("
+            await waiting_msg.edit_text(
+                "Waiting for admin approval...\n\nMan, you got rejected... Try sending another one! :("
             )
+            context.user_data.update({"photos": []})
             return loop_conv_state
     except TimeoutError:
         logger.info(f"Approval request {approval_id} timed out")
-        await update.message.reply_text(
-            "Approval timed out. Call @jloh02 and ask him to pay attention! Then send it again pls"
+        await waiting_msg.edit_text(
+            "Waiting for admin approval...\n\nApproval timed out. Call @jloh02 and ask him to pay attention! Then send it again pls"
         )
-        await msg.edit_caption(
+        await approver_captioned_msg_fn(
             f"Haizzz, admins not paying attention... Ask @{update.message.from_user.username} to submit it again"
         )
         return loop_conv_state
+    await waiting_msg.edit_text("Waiting for admin approval... Approved by @!")
 
 
 async def submit_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -412,7 +464,9 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if type != "chall":
         return
 
-    await query.message.edit_caption(
+    await (
+        query.message.edit_caption if query.message.caption else query.message.edit_text
+    )(
         f"{'Rejected' if status != '1' else 'Approved'} by @{query.from_user.username}\nRequest ID: {id} (@{gl_username})"
     )
 
@@ -439,12 +493,14 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
 def main() -> None:
     application = (
-        Application.builder().token(os.environ.get("TELEGRAM_BOT_KEY")).build()
+        Application.builder()
+        .token(os.environ.get("TELEGRAM_BOT_KEY"))
+        .concurrent_updates(16)
+        .build()
     )
 
     conv_handler = ConversationHandler(
         entry_points=[
-            CallbackQueryHandler(handle_approval),
             CommandHandler("start", dm_only_command(role_context_command(start))),
             CommandHandler(
                 "configgroup",
@@ -485,17 +541,14 @@ def main() -> None:
                 CommandHandler("cancel", cancel),
                 MessageHandler(filters.TEXT, submit_text),
             ],
-            ConvState.SubmitPhoto: [
-                MessageHandler(filters.PHOTO, submit_photo, block=False)
-            ],
-            ConvState.SubmitVideo: [
-                MessageHandler(filters.VIDEO, submit_video, block=False)
-            ],
+            ConvState.SubmitPhoto: [MessageHandler(filters.PHOTO, submit_photo)],
+            ConvState.SubmitVideo: [MessageHandler(filters.VIDEO, submit_video)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         conversation_timeout=600,
     )
     application.add_handler(conv_handler)
+    application.add_handler(CallbackQueryHandler(handle_approval))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
