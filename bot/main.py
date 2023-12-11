@@ -34,29 +34,31 @@ logging.basicConfig(
 logging.getLogger("httpx").setLevel(logging.WARNING)
 logger = logging.getLogger(__name__)
 
-bot = Bot(os.environ.get("TELEGRAM_BOT_KEY"))
-bot.set_my_commands(
-    ["start", "Register user"],
-    ["configgroup", "Use current chat for group updates"],
-    ["startrace", "Start the race (Only when told to do so)"],
-    ["submit", "Attempt a challenge"],
-    ["endrace", "Only press at finish line"],
-)
-
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if context.user_data["role"] == Role.Admin:
+    if context.user_data.get("role") == Role.Admin:
         firebase_util.register_admin(update.message.from_user.username)
+        logger.info(f"Admin @{update.message.from_user.username} registered")
         await update.message.reply_text("Welcome back admin!")
         return ConversationHandler.END
 
-    if context.user_data["role"] != Role.Unregistered:
+    if context.user_data.get("role") != Role.Unregistered:
+        logger.info(f"GL @{update.message.from_user.username} registered")
         await update.message.reply_text("You've already registered!")
         return ConversationHandler.END
 
-    firebase_util.register_user(
+    success = firebase_util.register_user(
         update.message.from_user.username, update.message.from_user.id
     )
+    if not success:
+        logger.info(
+            f"Non-GL/Admin user tried to register: @{update.message.from_user.username}"
+        )
+        await update.message.reply_text(
+            "You can't PM this bot! Ask your GL to do it for you!"
+        )
+        return ConversationHandler.END
+
     await update.message.reply_text("All aboard! You can start using this amazing bot!")
     return ConversationHandler.END
 
