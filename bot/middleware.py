@@ -52,3 +52,13 @@ def race_started_only_command(callback) -> SCT:
         return await callback(update, context)
 
     return role_context_command(fn)
+
+
+def recent_location_command(callback) -> SCT:
+    async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+        if not firebase_util.recent_location_update(update.message.from_user.username):
+            await update.message.reply_text("Please ensure your location is updated!")
+            return ConversationHandler.END
+        return await callback(update, context)
+
+    return fn

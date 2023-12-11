@@ -44,7 +44,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def config_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     message = update.message
     firebase_util.set_broadcast_group(message.from_user.username, message.chat_id)
-    await update.message.reply_text("I'll send updates to this group now!")
+    await update.message.reply_text("I'll send updates to this group from now on!")
     return ConversationHandler.END
 
 
@@ -79,9 +79,6 @@ async def start_race(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         await update.message.reply_text(
             "Your race has already started! Stop wasting time!"
         )
-        return ConversationHandler.END
-    if not firebase_util.recent_location_update(update.message.from_user.username):
-        await update.message.reply_text("Please ensure your location is updated!")
         return ConversationHandler.END
     await update.message.reply_text(
         "Choose your direction for challenges\n\n/cancel if you have not been authorized to start",

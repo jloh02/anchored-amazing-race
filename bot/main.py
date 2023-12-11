@@ -24,6 +24,7 @@ from middleware import (
     role_context_command,
     role_restricted_command,
     race_started_only_command,
+    recent_location_command,
 )
 from user_setup import (
     start,
@@ -99,13 +100,20 @@ def main() -> None:
             ),
             CommandHandler(
                 "startrace",
-                dm_only_command(role_restricted_command(start_race, [Role.GL])),
+                dm_only_command(
+                    role_restricted_command(
+                        recent_location_command(start_race), [Role.GL]
+                    )
+                ),
             ),
             CommandHandler(
                 "submit",
                 dm_only_command(
                     role_restricted_command(
-                        race_started_only_command(submit_challenge), [Role.GL]
+                        race_started_only_command(
+                            recent_location_command(submit_challenge)
+                        ),
+                        [Role.GL],
                     )
                 ),
             ),
