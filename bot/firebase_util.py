@@ -56,7 +56,7 @@ def get_admin_broadcast() -> int:
 
 def register_user(username: str, userid: int):
     ref = db.collection("users").document(username)
-    if not ref.exists:
+    if not ref.get().exists:
         return False
     ref.update({"registered": True})
     set_broadcast_group(username, userid)
