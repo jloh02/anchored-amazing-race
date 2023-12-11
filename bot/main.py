@@ -1,15 +1,11 @@
 import os
 import logging
 import asyncio
-from functools import reduce
 from dotenv import load_dotenv
 from telegram import (
-    InlineKeyboardMarkup,
-    InlineKeyboardButton,
     Update,
     Bot,
     BotCommand,
-    InputMediaPhoto,
 )
 from telegram.ext import (
     Application,
@@ -21,7 +17,7 @@ from telegram.ext import (
     filters,
 )
 
-from constants import Role, ConvState, Direction, ChallengeType
+from constants import Role, ConvState
 import firebase_util
 from middleware import (
     dm_only_command,
@@ -29,47 +25,32 @@ from middleware import (
     role_restricted_command,
     race_started_only_command,
 )
+from user_setup import (
+    start,
+    start_race,
+    config_group,
+    choose_direction,
+    confirm_direction,
+)
+from challenges import (
+    submit_challenge,
+    select_challenge,
+    submit_photo,
+    submit_text,
+    submit_video,
+    handle_approval,
+)
 
 load_dotenv()
-
 firebase_util.init()
 
-# Enable logging
 logging.basicConfig(
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
 )
-# set higher logging level for httpx to avoid all GET and POST requests being logged
 logging.getLogger("httpx").setLevel(logging.WARNING)
-logger = logging.getLogger(__name__)
+logging.getLogger("apscheduler.scheduler").setLevel(logging.WARNING)
 
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if context.user_data.get("role") == Role.Admin:
-        firebase_util.register_admin(update.message.from_user.username)
-        logger.info(f"Admin @{update.message.from_user.username} registered")
-        await update.message.reply_text("Welcome back admin!")
-        return ConversationHandler.END
-
-    if context.user_data.get("role") != Role.Unregistered:
-        logger.info(f"GL @{update.message.from_user.username} registered")
-        await update.message.reply_text("You've already registered!")
-        return ConversationHandler.END
-
-    success = firebase_util.register_user(
-        update.message.from_user.username, update.message.from_user.id
-    )
-    if not success:
-        logger.info(
-            f"Non-GL/Admin user tried to register: @{update.message.from_user.username}"
-        )
-        await update.message.reply_text(
-            "You can't PM this bot! Ask your GL to do it for you!"
-        )
-        return ConversationHandler.END
-
-    logger.info(f"GL @{update.message.from_user.username} registered")
-    await update.message.reply_text("All aboard! You can start using this amazing bot!")
-    return ConversationHandler.END
+logger = logging.getLogger("main")
 
 
 async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -79,402 +60,6 @@ async def location(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         message.location.latitude,
         message.location.longitude,
     )
-    return ConversationHandler.END
-
-
-START_RACE_MARKUP = InlineKeyboardMarkup(
-    [
-        [
-            InlineKeyboardButton(
-                "Direction A, Toa Payoh First", callback_data=Direction.A1
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "Direction A, Toa Payoh Last", callback_data=Direction.A0
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "Direction B, Toa Payoh First", callback_data=Direction.B1
-            )
-        ],
-        [
-            InlineKeyboardButton(
-                "Direction B, Toa Payoh Last", callback_data=Direction.B0
-            )
-        ],
-    ]
-)
-
-
-async def config_group(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    message = update.message
-    firebase_util.set_broadcast_group(message.from_user.username, message.chat_id)
-    await update.message.reply_text("I'll send updates to this group now!")
-    return ConversationHandler.END
-
-
-async def start_race(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    if firebase_util.has_race_started(update.message.from_user.username):
-        await update.message.reply_text(
-            "Your race has already started! Stop wasting time!"
-        )
-        return ConversationHandler.END
-    if not firebase_util.recent_location_update(update.message.from_user.username):
-        await update.message.reply_text("Please ensure your location is updated!")
-        return ConversationHandler.END
-    await update.message.reply_text(
-        "Choose your direction for challenges\n\n/cancel if you have not been authorized to start",
-        reply_markup=START_RACE_MARKUP,
-    )
-    return ConvState.ChooseDirection
-
-
-async def choose_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-    await query.edit_message_text(
-        text=f"Confirm Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [InlineKeyboardButton("Yes", callback_data=query.data)],
-                [InlineKeyboardButton("No", callback_data="cancel")],
-            ]
-        ),
-    )
-    return ConvState.ChooseDirectionConfirmation
-
-
-async def send_challenges(bot: Bot, chat_id: int, loc: str, challenges):
-    await bot.send_message(
-        chat_id,
-        reduce(
-            lambda acc, iv: acc
-            + (f"Challenge #{iv[0]+1}:\n{iv[1]['description']}\n\n" if iv[1] else ""),
-            challenges,
-            f"Challenges for {loc}\n---------------------------------------------\n",
-        ),
-    )
-
-
-async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-    if query.data == "cancel":
-        await query.edit_message_text("Start race cancelled", reply_markup=None)
-        return ConversationHandler.END
-
-    await query.edit_message_text(
-        text=f"The race begins!\n\nDirection {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
-        reply_markup=None,
-    )
-
-    firebase_util.start_race(query.from_user.username, query.data)
-    group_info, loc, challenge = firebase_util.get_current_challenge(
-        query.from_user.username
-    )
-
-    await context.bot.send_message(
-        group_info["broadcast_channel"],
-        f"Ahoy! The treasure hunt begins!\n\nRoute Chosen: Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
-    )
-
-    await send_challenges(
-        context.bot,
-        group_info["broadcast_channel"],
-        loc,
-        challenge,
-    )
-
-    await context.bot.send_message(
-        firebase_util.get_admin_broadcast(),
-        f"{group_info['name']} has started the race",
-    )
-    logger.info(
-        f"@{query.from_user.username} selected direction for {group_info['name']}: {query.data}"
-    )
-
-    return ConversationHandler.END
-
-
-async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logger.info(
-        f"@{update.message.from_user.username} attempting to submit a challenge"
-    )
-
-    group_info, location, challenge = firebase_util.get_current_challenge(
-        update.message.from_user.username
-    )
-
-    if group_info.get("race_completed"):
-        await update.message.reply_text(
-            text=f"Stop wasting time! Just finish up the race and rest!",
-        )
-        return ConversationHandler.END
-    await update.message.reply_text(
-        text=f"Which challenge do you want to submit?",
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        f"Challenge #{i+1}", callback_data=f"{i}_{location}"
-                    )
-                ]
-                for [i, chall] in challenge
-            ]
-        ),
-    )
-    return ConvState.SelectChallenge
-
-
-def challenge_type_to_conv_state(chall_type: ChallengeType):
-    if chall_type == ChallengeType.Text:
-        return ConvState.SubmitText
-    elif chall_type == ChallengeType.Video:
-        return ConvState.SubmitVideo
-    elif chall_type == ChallengeType.Photo:
-        return ConvState.SubmitPhoto
-
-
-async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    query = update.callback_query
-    await query.answer()
-
-    chall_num, chall_loc = query.data.split("_", 1)
-    chall_num = int(chall_num)
-    context.user_data.update(
-        {
-            "challenge_number": chall_num,
-            "challenge_location": chall_loc,
-            "step_number": 0,
-            "photos": [],
-        }
-    )
-
-    step = firebase_util.get_current_step(chall_loc, chall_num, 0)
-    step_type = ChallengeType[step["type"]]
-
-    await query.edit_message_text(
-        text=step["description"],
-        reply_markup=None,
-    )
-
-    logger.info(
-        f"@{query.from_user.username} attempting to submit a challenge: {chall_loc} #{chall_num}"
-    )
-
-    return challenge_type_to_conv_state(step_type)
-
-
-async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data.update({"step_number": context.user_data.get("step_number") + 1})
-
-    step = firebase_util.get_current_step(
-        context.user_data.get("challenge_location"),
-        context.user_data.get("challenge_number"),
-        context.user_data.get("step_number"),
-    )
-
-    if step:
-        await update.message.reply_text(step["description"])
-        return challenge_type_to_conv_state(ChallengeType[step["type"]])
-
-    challs_left = firebase_util.complete_challenge(
-        update.message.from_user.username,
-        context.user_data.get("challenge_location"),
-        context.user_data.get("challenge_number"),
-    )
-    await update.message.reply_text("Challenge completed!")
-
-    if challs_left <= 0:
-        group_info, loc, challenge = firebase_util.next_location(
-            update.message.from_user.username
-        )
-        if not challenge:
-            await context.bot.send_message(
-                group_info["broadcast_channel"],
-                "Head back to the endpoint! GO GO GO! The treasure awaits you!",
-            )
-            return ConversationHandler.END
-
-        await send_challenges(
-            context.bot,
-            group_info["broadcast_channel"],
-            loc,
-            challenge,
-        )
-        return ConversationHandler.END
-
-    return ConversationHandler.END
-
-
-async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logger.info(
-        f"@{update.message.from_user.username} submitted text: {update.message.text}"
-    )
-
-    step = firebase_util.get_current_step(
-        context.user_data.get("challenge_location"),
-        context.user_data.get("challenge_number"),
-        context.user_data.get("step_number"),
-    )
-
-    if step["answer"] != update.message.text.strip():
-        await update.message.reply_text("Incorrect answer")
-        return ConvState.SubmitText
-
-    return await process_next_step(update, context)
-
-
-def get_approval_content(update, context, step, approval_id):
-    return (
-        f"Admins! 빨리주세요! Approve @{update.message.from_user.username} submission for {context.user_data.get('challenge_location')} Challenge #{context.user_data.get('challenge_number')} ({step.get('description')})\n\nRequest ID: {approval_id}",
-        InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        "Approve",
-                        callback_data=f"chall|1|{approval_id}|{update.message.from_user.username}",
-                    )
-                ],
-                [
-                    InlineKeyboardButton(
-                        "Reject",
-                        callback_data=f"chall|0|{approval_id}|{update.message.from_user.username}",
-                    )
-                ],
-            ]
-        ),
-    )
-
-
-async def start_approval_process(
-    update: Update, context: ContextTypes.DEFAULT_TYPE, loop_conv_state: ConvState
-) -> int:
-    step = firebase_util.get_current_step(
-        context.user_data.get("challenge_location"),
-        context.user_data.get("challenge_number"),
-        context.user_data.get("step_number"),
-    )
-
-    if (
-        loop_conv_state == ConvState.SubmitPhoto
-        and "num_photo" in step
-        and step["num_photo"] > 0
-    ):
-        context.user_data.update(
-            {"photos": context.user_data.get("photos") + [update.message.photo[-1]]}
-        )
-        photos = context.user_data.get("photos")
-        await update.message.reply_text(
-            f"{len(photos)}/{step['num_photo']} photos received"
-        )
-        if len(photos) != step["num_photo"]:
-            return ConvState.SubmitPhoto
-
-        approval_id = firebase_util.generate_approval_request()
-        APPROVAL_MESSAGE, APPROVAL_MARKUP = get_approval_content(
-            update, context, step, approval_id
-        )
-        await context.bot.send_media_group(
-            firebase_util.get_admin_broadcast(),
-            [InputMediaPhoto(p) for p in photos[:-1]],
-        )
-        approver_captioned_msg = await context.bot.send_photo(
-            firebase_util.get_admin_broadcast(),
-            photos[-1].file_id,
-            caption=APPROVAL_MESSAGE,
-            reply_markup=APPROVAL_MARKUP,
-        )
-        approver_captioned_msg_fn = approver_captioned_msg.edit_text
-    else:
-        media_id = (
-            update.message.photo[-1].file_id
-            if loop_conv_state == ConvState.SubmitPhoto
-            else update.message.video.file_id
-        )
-
-        send_fn = (
-            context.bot.send_photo
-            if loop_conv_state == ConvState.SubmitPhoto
-            else context.bot.send_video
-        )
-
-        approval_id = firebase_util.generate_approval_request()
-        APPROVAL_MESSAGE, APPROVAL_MARKUP = get_approval_content(
-            update, context, step, approval_id
-        )
-
-        approver_captioned_msg = await send_fn(
-            firebase_util.get_admin_broadcast(),
-            media_id,
-            caption=APPROVAL_MESSAGE,
-            reply_markup=APPROVAL_MARKUP,
-        )
-        approver_captioned_msg_fn = approver_captioned_msg.edit_caption
-
-    waiting_msg = await update.message.reply_text("Waiting for admin approval...")
-
-    try:
-        result = await firebase_util.wait_approval(approval_id, 300)
-        if not result:
-            await waiting_msg.edit_text(
-                "Waiting for admin approval...\n\nMan, you got rejected... Try sending another one! :("
-            )
-            context.user_data.update({"photos": []})
-            return loop_conv_state
-    except TimeoutError:
-        logger.info(f"Approval request {approval_id} timed out")
-        await waiting_msg.edit_text(
-            "Waiting for admin approval...\n\nApproval timed out. Call @jloh02 and ask him to pay attention! Then send it again pls"
-        )
-        await approver_captioned_msg_fn(
-            f"Haizzz, admins not paying attention... Ask @{update.message.from_user.username} to submit it again"
-        )
-        return loop_conv_state
-    await waiting_msg.edit_text("Waiting for admin approval... Approved by @!")
-
-
-async def submit_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logger.info(f"@{update.message.from_user.username} submitted photo")
-    return await start_approval_process(
-        update, context, ConvState.SubmitPhoto
-    ) or await process_next_step(update, context)
-
-
-async def submit_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    logger.info(f"@{update.message.from_user.username} submitted video")
-    return await start_approval_process(
-        update, context, ConvState.SubmitVideo
-    ) or await process_next_step(update, context)
-
-
-async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
-
-    role = firebase_util.get_role(query.from_user.username)
-    if role != Role.Admin and role != Role.GL:  # TODO Remove GLs
-        logger.warn(f"Unauthorized approver: @{query.from_user.username} is a {role}")
-        return
-
-    type, status, id, gl_username = query.data.split("|")
-
-    if type != "chall":
-        return
-
-    await (
-        query.message.edit_caption if query.message.caption else query.message.edit_text
-    )(
-        f"{'Rejected' if status != '1' else 'Approved'} by @{query.from_user.username}\nRequest ID: {id} (@{gl_username})"
-    )
-
-    logger.info(
-        f"@{query.from_user.username} {'rejected' if status != '1' else 'approved'} request {id} sent by @{gl_username}"
-    )
-    firebase_util.update_approval(id, status == "1")
-
     return ConversationHandler.END
 
 
