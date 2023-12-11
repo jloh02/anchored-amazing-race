@@ -59,6 +59,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         )
         return ConversationHandler.END
 
+    logger.info(f"GL @{update.message.from_user.username} registered")
     await update.message.reply_text("All aboard! You can start using this amazing bot!")
     return ConversationHandler.END
 
