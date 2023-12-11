@@ -113,7 +113,11 @@ def has_race_started(username: str) -> bool:
 
 
 def get_start_chall_index(direction: Direction) -> int:
-    return 0 if str(direction)[1] == "1" else (1 if direction == Direction.A0 else 4)
+    if direction == Direction.A0:
+        return 1
+    if direction == Direction.B0:
+        return 4
+    return 0
 
 
 def start_race(username: str, direction: Direction) -> dict | None:
