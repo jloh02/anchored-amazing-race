@@ -26,6 +26,27 @@
               "type": "Photo"
             }
           ]
+        },
+        {
+          "description": "Waldo challenge",
+          "steps": [
+            {
+              "description": "Find the unit number and thus store within City Square Mall:\nFor the floor number: Find a fish with its eyes closed\nFor the unit number: Find a fish that is smiling\nAnswer Format: 'xx-xx'",
+              "media": "waldo.jpg",
+              "type": "Text",
+              "answer": "02-03"
+            }
+          ]
+        },
+        {
+          "description": "Find everything challenge",
+          "steps": [
+            {
+              "description": "Take a photo of the number you see on the screen! You've got 2 mins before it changes!",
+              "rotating_media": "rotating",
+              "type": "Photo"
+            }
+          ]
         }
       ]
     },

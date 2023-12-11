@@ -11,7 +11,7 @@ from telegram.ext import (
 )
 
 import firebase_util
-from utils import send_challenges
+from utils import send_challenges, challenge_type_to_conv_state, send_step
 from constants import Role, ConvState, ChallengeType
 
 logger = logging.getLogger("challenges")
@@ -47,15 +47,6 @@ async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return ConvState.SelectChallenge
 
 
-def challenge_type_to_conv_state(chall_type: ChallengeType):
-    if chall_type == ChallengeType.Text:
-        return ConvState.SubmitText
-    elif chall_type == ChallengeType.Video:
-        return ConvState.SubmitVideo
-    elif chall_type == ChallengeType.Photo:
-        return ConvState.SubmitPhoto
-
-
 async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -75,9 +66,11 @@ async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     step_type = ChallengeType[step["type"]]
 
     await query.edit_message_text(
-        text=step["description"],
+        text=f"Attempting Challenge #{chall_num+1}",
         reply_markup=None,
     )
+
+    await send_step(query.from_user.id, context, step)
 
     logger.info(
         f"@{query.from_user.username} attempting to submit a challenge: {chall_loc} #{chall_num}"
@@ -96,7 +89,7 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
 
     if step:
-        await update.message.reply_text(step["description"])
+        await send_step(update.message.from_user.id, context, step)
         return challenge_type_to_conv_state(ChallengeType[step["type"]])
 
     challs_left = firebase_util.complete_challenge(

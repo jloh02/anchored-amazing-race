@@ -81,6 +81,7 @@ def main() -> None:
     application = (
         Application.builder()
         .token(os.environ.get("TELEGRAM_BOT_KEY"))
+        .read_timeout(10)
         .concurrent_updates(16)
         .build()
     )
@@ -141,7 +142,7 @@ def main() -> None:
         conversation_timeout=600,
     )
     application.add_handler(conv_handler)
-    application.add_handler(CallbackQueryHandler(handle_approval))
+    application.add_handler(CallbackQueryHandler(handle_approval, r"chall\|.*"))
 
     # Run the bot until the user presses Ctrl-C
     application.run_polling(allowed_updates=Update.ALL_TYPES)
