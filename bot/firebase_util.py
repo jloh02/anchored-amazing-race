@@ -8,6 +8,7 @@ from firebase_admin import credentials, firestore
 
 db = None
 app = None
+broadcast_channel = None
 
 
 def init():
@@ -54,7 +55,15 @@ def set_broadcast_group(username: str, chatid: int):
 
 
 def get_admin_broadcast() -> int:
-    return db.collection("admins").document("_globals").get().to_dict()["broadcast"]
+    global broadcast_channel
+
+    if broadcast_channel:
+        return broadcast_channel
+
+    broadcast_channel = (
+        db.collection("admins").document("_globals").get().to_dict()["broadcast"]
+    )
+    return broadcast_channel
 
 
 def register_user(username: str, userid: int):
