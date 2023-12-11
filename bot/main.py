@@ -1,8 +1,9 @@
 import os
 import logging
+import asyncio
 from functools import reduce
 from dotenv import load_dotenv
-from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update, Bot
+from telegram import InlineKeyboardMarkup, InlineKeyboardButton, Update, Bot, BotCommand
 from telegram.ext import (
     Application,
     CallbackQueryHandler,
@@ -198,6 +199,12 @@ async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     group_info, location, challenge = firebase_util.get_current_challenge(
         update.message.from_user.username
     )
+
+    if group_info.get("race_completed"):
+        await update.message.reply_text(
+            text=f"Stop wasting time! Just finish up the race and rest!",
+        )
+        return ConversationHandler.END
     await update.message.reply_text(
         text=f"Which challenge do you want to submit?",
         reply_markup=InlineKeyboardMarkup(
@@ -229,31 +236,36 @@ async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
 
     chall_num, chall_loc = query.data.split("_", 1)
     chall_num = int(chall_num)
-    context.user_data["challenge_number"], context.user_data["challenge_location"] = (
-        chall_num,
-        chall_loc,
+    context.user_data.update(
+        {
+            "challenge_number": chall_num,
+            "challenge_location": chall_loc,
+            "step_number": 0,
+        }
     )
-    context.user_data["step_number"] = 0
 
     step = firebase_util.get_current_step(chall_loc, chall_num, 0)
-    context.user_data["waiting_messages"] = step["num_messages"]
-    chall_type = ChallengeType[step["type"]]
+    step_type = ChallengeType[step["type"]]
 
     await query.edit_message_text(
         text=step["description"],
         reply_markup=None,
     )
 
-    return challenge_type_to_conv_state(chall_type)
+    logger.info(
+        f"@{query.from_user.username} attempting to submit a challenge: {chall_loc} #{chall_num}"
+    )
+
+    return challenge_type_to_conv_state(step_type)
 
 
 async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
-    context.user_data["step_number"] += 1
+    context.user_data.update({"step_number": context.user_data.get("step_number") + 1})
 
     step = firebase_util.get_current_step(
-        context.user_data["challenge_location"],
-        context.user_data["challenge_number"],
-        context.user_data["step_number"],
+        context.user_data.get("challenge_location"),
+        context.user_data.get("challenge_number"),
+        context.user_data.get("step_number"),
     )
 
     if step:
@@ -262,8 +274,8 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
     challs_left = firebase_util.complete_challenge(
         update.message.from_user.username,
-        context.user_data["challenge_location"],
-        context.user_data["challenge_number"],
+        context.user_data.get("challenge_location"),
+        context.user_data.get("challenge_number"),
     )
     await update.message.reply_text("Challenge completed!")
 
@@ -286,8 +298,6 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         )
         return ConversationHandler.END
 
-    await update.message.reply_text("Challenge completed")
-
     return ConversationHandler.END
 
 
@@ -297,9 +307,9 @@ async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     )
 
     step = firebase_util.get_current_step(
-        context.user_data["challenge_location"],
-        context.user_data["challenge_number"],
-        context.user_data["step_number"],
+        context.user_data.get("challenge_location"),
+        context.user_data.get("challenge_number"),
+        context.user_data.get("step_number"),
     )
 
     if step["answer"] != update.message.text.strip():
@@ -309,26 +319,109 @@ async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return await process_next_step(update, context)
 
 
+async def start_approval_process(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, loop_conv_state: ConvState
+) -> int:
+    approval_id = firebase_util.generate_approval_request()
+
+    step = firebase_util.get_current_step(
+        context.user_data.get("challenge_location"),
+        context.user_data.get("challenge_number"),
+        context.user_data.get("step_number"),
+    )
+
+    media_id = (
+        update.message.photo[-1].file_id
+        if loop_conv_state == ConvState.SubmitPhoto
+        else update.message.video.file_id
+    )
+
+    send_fn = (
+        context.bot.send_photo
+        if loop_conv_state == ConvState.SubmitPhoto
+        else context.bot.send_video
+    )
+
+    msg = await send_fn(
+        firebase_util.get_admin_broadcast(),
+        media_id,
+        caption=f"Admins! 빨리주세요! Approve @{update.message.from_user.username} submission for {context.user_data.get('challenge_location')} Challenge #{context.user_data.get('challenge_number')} ({step.get('description')})\n\nRequest ID: {approval_id}",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        "Approve",
+                        callback_data=f"chall|1|{approval_id}|{update.message.from_user.username}",
+                    )
+                ],
+                [
+                    InlineKeyboardButton(
+                        "Reject",
+                        callback_data=f"chall|0|{approval_id}|{update.message.from_user.username}",
+                    )
+                ],
+            ]
+        ),
+    )
+
+    await update.message.reply_text("Waiting for admin approval...")
+
+    try:
+        result = await firebase_util.wait_approval(approval_id, 300)
+        if not result:
+            await update.message.reply_text(
+                "Man, you got rejected... Try sending another one! :("
+            )
+            return loop_conv_state
+    except TimeoutError:
+        logger.info(f"Approval request {approval_id} timed out")
+        await update.message.reply_text(
+            "Approval timed out. Call @jloh02 and ask him to pay attention! Then send it again pls"
+        )
+        await msg.edit_caption(
+            f"Haizzz, admins not paying attention... Ask @{update.message.from_user.username} to submit it again"
+        )
+        return loop_conv_state
+
+
 async def submit_photo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info(f"@{update.message.from_user.username} submitted photo")
-
-    await context.bot.send_photo(
-        firebase_util.get_admin_broadcast(),
-        update.message.photo[-1]["file_id"],
-        f"Photo from @{update.message.from_user.username}",
-    )
-    return await process_next_step(update, context)
+    return await start_approval_process(
+        update, context, ConvState.SubmitPhoto
+    ) or await process_next_step(update, context)
 
 
 async def submit_video(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info(f"@{update.message.from_user.username} submitted video")
+    return await start_approval_process(
+        update, context, ConvState.SubmitVideo
+    ) or await process_next_step(update, context)
 
-    await context.bot.send_video(
-        firebase_util.get_admin_broadcast(),
-        update.message.video.file_id,
-        f"Photo from @{update.message.from_user.username}",
+
+async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    query = update.callback_query
+    await query.answer()
+
+    role = firebase_util.get_role(query.from_user.username)
+    if role != Role.Admin and role != Role.GL:  # TODO Remove GLs
+        logger.warn(f"Unauthorized approver: @{query.from_user.username} is a {role}")
+        return
+
+    type, status, id, gl_username = query.data.split("|")
+
+    if type != "chall":
+        return
+
+    await query.message.edit_caption(
+        f"{'Rejected' if status != '1' else 'Approved'} by @{query.from_user.username}\nRequest ID: {id} (@{gl_username})"
     )
-    return await process_next_step(update, context)
+
+    logger.info(
+        f"@{query.from_user.username} {'rejected' if status != '1' else 'approved'} request {id} sent by @{gl_username}"
+    )
+    firebase_util.update_approval(id, status == "1")
+
+    return ConversationHandler.END
 
 
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -344,9 +437,6 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     return ConversationHandler.END
 
 
-COMMANDS = []
-
-
 def main() -> None:
     application = (
         Application.builder().token(os.environ.get("TELEGRAM_BOT_KEY")).build()
@@ -354,6 +444,7 @@ def main() -> None:
 
     conv_handler = ConversationHandler(
         entry_points=[
+            CallbackQueryHandler(handle_approval),
             CommandHandler("start", dm_only_command(role_context_command(start))),
             CommandHandler(
                 "configgroup",
@@ -390,13 +481,20 @@ def main() -> None:
                 CallbackQueryHandler(confirm_direction)
             ],
             ConvState.SelectChallenge: [CallbackQueryHandler(select_challenge)],
-            ConvState.SubmitText: [MessageHandler(filters.TEXT, submit_text)],
-            ConvState.SubmitPhoto: [MessageHandler(filters.PHOTO, submit_photo)],
-            ConvState.SubmitVideo: [MessageHandler(filters.VIDEO, submit_video)],
+            ConvState.SubmitText: [
+                CommandHandler("cancel", cancel),
+                MessageHandler(filters.TEXT, submit_text),
+            ],
+            ConvState.SubmitPhoto: [
+                MessageHandler(filters.PHOTO, submit_photo, block=False)
+            ],
+            ConvState.SubmitVideo: [
+                MessageHandler(filters.VIDEO, submit_video, block=False)
+            ],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
+        conversation_timeout=600,
     )
-
     application.add_handler(conv_handler)
 
     # Run the bot until the user presses Ctrl-C
@@ -404,4 +502,17 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(
+        Bot(os.environ.get("TELEGRAM_BOT_KEY")).set_my_commands(
+            [
+                BotCommand("start", "Register user"),
+                BotCommand("configgroup", "Use current chat for group updates"),
+                BotCommand("startrace", "Start the race (Only when told to do so)"),
+                BotCommand("submit", "Attempt a challenge"),
+                BotCommand("endrace", "Only press at finish line"),
+                BotCommand("cancel", "Cancel the command. Also use when bot hangs"),
+            ]
+        )
+    )
+    loop.run_until_complete(main())

@@ -21,7 +21,8 @@
           "description": "You have been given a 6x5 piece jigsaw puzzle. Piece together the jigsaw puzzle, recreate the exact same picture of it.",
           "steps": [
             {
-              "description": "Send the photo",
+              "num_photo": 5,
+              "description": "Send 5 photos",
               "type": "Photo"
             }
           ]
@@ -35,8 +36,9 @@
           "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
           "steps": [
             {
-              "description": "Send the photo",
-              "type": "Photo"
+              "description": "Send 1",
+              "type": "Text",
+              "answer": "1"
             }
           ]
         }
@@ -49,8 +51,9 @@
           "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
           "steps": [
             {
-              "description": "Send the photo",
-              "type": "Photo"
+              "description": "Send 1",
+              "type": "Text",
+              "answer": "1"
             }
           ]
         }
@@ -63,8 +66,9 @@
           "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
           "steps": [
             {
-              "description": "Send the photo",
-              "type": "Photo"
+              "description": "Send 1",
+              "type": "Text",
+              "answer": "1"
             }
           ]
         }
@@ -77,8 +81,9 @@
           "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
           "steps": [
             {
-              "description": "Send the photo",
-              "type": "Photo"
+              "description": "Send 1",
+              "type": "Text",
+              "answer": "1"
             }
           ]
         }

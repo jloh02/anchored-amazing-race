@@ -1,5 +1,6 @@
 import os
 import json
+import asyncio
 import datetime
 import firebase_admin
 from constants import Role, Direction
@@ -44,6 +45,8 @@ def reset():
         db.collection("challenges").document("sabotage").set(
             {"challenges": challs["sabotage"]}
         )
+    for doc in db.collection("approvals").list_documents():
+        doc.delete()
 
 
 def set_broadcast_group(username: str, chatid: int):
@@ -128,6 +131,7 @@ def start_race(username: str, direction: Direction) -> dict | None:
             "current_location": get_start_chall_index(direction),
             "challenges_completed": [],
             "direction": str(direction),
+            "race_completed": False,
         }
     )
     return group_ref.get().to_dict()
@@ -167,7 +171,7 @@ def next_location(
     direction = Direction[group["direction"]]
 
     new_location_index = group["current_location"] + (
-        1 if direction == Direction.A1 or direction == Direction.A0 else -1
+        1 if (direction == Direction.A1 or direction == Direction.A0) else -1
     )
 
     if new_location_index < 0:
@@ -175,14 +179,19 @@ def next_location(
     elif new_location_index > 4:
         new_location_index = 0
 
+    race_completed = new_location_index == get_start_chall_index(
+        direction
+    )  # Loop completed
+
     group_ref.update(
-        {"current_location": new_location_index, "challenges_completed": []}
+        {
+            "current_location": new_location_index,
+            "challenges_completed": [],
+            "race_completed": race_completed,
+        }
     )
 
-    if new_location_index == get_start_chall_index(direction):  # Loop completed
-        return group, None, None
-
-    return get_current_challenge(username)
+    return (group, None, None) if race_completed else get_current_challenge(username)
 
 
 def get_current_step(
@@ -207,3 +216,42 @@ def complete_challenge(username: str, location: str, chall_num: int) -> bool:
     return len(
         db.collection("challenges").document(location).get().to_dict()["challenges"]
     ) - len(group_ref.get().to_dict()["challenges_completed"])
+
+
+def generate_approval_request() -> str:
+    update_time, doc = db.collection("approvals").add(
+        {"status": False, "approved": False}
+    )
+    return doc.id
+
+
+async def wait_approval(id: str, timeout: int):
+    output = {"status": False}
+    listener = None
+
+    task_completed_event = asyncio.Event()
+
+    def update_status(doc_snapshot, changes, read_time):
+        status = doc_snapshot[0].to_dict()
+        if status["status"]:
+            try:
+                if listener:
+                    listener.unsubscribe()
+            except RuntimeError:
+                pass
+            db.collection("approvals").document(id).delete()
+            output.update(status)
+            if output.get("status"):
+                task_completed_event.set()
+
+    listener = db.collection("approvals").document(id).on_snapshot(update_status)
+
+    await asyncio.wait_for(task_completed_event.wait(), timeout)
+
+    return output.get("approved")
+
+
+def update_approval(id: str, approved: bool):
+    db.collection("approvals").document(id).update(
+        {"status": True, "approved": approved}
+    )

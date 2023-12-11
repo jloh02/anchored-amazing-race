@@ -21,7 +21,9 @@ def dm_only_command(callback, quiet=False) -> SCT:
 def role_context_command(callback) -> SCT:
     async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         message = update.message if update.message else update.edited_message
-        context.user_data["role"] = firebase_util.get_role(message.from_user.username)
+        context.user_data.update(
+            {"role": firebase_util.get_role(message.from_user.username)}
+        )
         return await callback(update, context)
 
     return fn
@@ -30,7 +32,7 @@ def role_context_command(callback) -> SCT:
 def role_restricted_command(callback, allow: list[Role], quiet=False) -> SCT:
     async def fn(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
         message = update.message if update.message else update.edited_message
-        if not context.user_data["role"] in allow:
+        if not context.user_data.get("role") in allow:
             if not quiet:
                 await message.reply_text("Unauthorized User")
             return ConversationHandler.END
