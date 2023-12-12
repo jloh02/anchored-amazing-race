@@ -48,6 +48,7 @@ def reset():
         )
     for doc in db.collection("approvals").list_documents():
         doc.delete()
+    db.collection("approvals").document("placeholder").set({})
 
 
 def set_broadcast_group(username: str, chatid: int):
@@ -116,9 +117,24 @@ def recent_location_update(username: str) -> bool:
         return False
 
 
+def get_location(username: str) -> bool:
+    user = db.collection("users").document(username).get().to_dict()
+    try:
+        return user["location"]
+    except KeyError:
+        return None
+
+
 def has_race_started(username: str) -> bool:
     try:
         return bool(get_user_group(username).get().to_dict()["start_time"])
+    except KeyError:
+        return False
+
+
+def has_race_ended(username: str) -> bool:
+    try:
+        return bool(get_user_group(username).get().to_dict()["race_completed"])
     except KeyError:
         return False
 
@@ -143,6 +159,13 @@ def start_race(username: str, direction: Direction) -> dict | None:
         }
     )
     return group_ref.get().to_dict()
+
+
+def end_race(username: str) -> tuple[datetime.datetime]:
+    group_ref = get_user_group(username)
+    group_ref.update({"end_time": firestore.firestore.SERVER_TIMESTAMP})
+    data = group_ref.get().to_dict()
+    return data["start_time"], data["end_time"]
 
 
 def get_current_challenge(username: str) -> tuple[str | dict]:

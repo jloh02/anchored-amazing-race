@@ -5,7 +5,7 @@ from telegram import (
     Update,
     InputMediaPhoto,
 )
-from telegram.ext import ContextTypes, ConversationHandler, Job
+from telegram.ext import ContextTypes, ConversationHandler
 
 import firebase_util
 from utils import send_challenges, challenge_type_to_conv_state, send_step

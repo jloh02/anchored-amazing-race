@@ -47,6 +47,7 @@ from challenges import (
     submit_video,
     handle_approval,
 )
+from misc_commands import end_race
 
 load_dotenv()
 firebase_util.init()
@@ -125,6 +126,15 @@ def main() -> None:
                     )
                 ),
             ),
+            CommandHandler(
+                "endrace",
+                dm_only_command(
+                    role_restricted_command(
+                        race_started_only_command(recent_location_command(end_race)),
+                        [Role.GL],
+                    )
+                ),
+            ),
             MessageHandler(
                 filters.LOCATION,
                 dm_only_command(
@@ -162,9 +172,11 @@ if __name__ == "__main__":
             [
                 BotCommand("start", "Register user"),
                 BotCommand("configgroup", "Use current chat for group updates"),
-                BotCommand("startrace", "Start the race (Only when told to do so)"),
                 BotCommand("submit", "Attempt a challenge"),
-                BotCommand("endrace", "Only press at finish line"),
+                BotCommand("startrace", "Start the race (Only when told to do so)"),
+                BotCommand(
+                    "endrace", "Press at finishing line after challenges completed"
+                ),
                 BotCommand("cancel", "Cancel the command. Also use when bot hangs"),
             ]
         )
