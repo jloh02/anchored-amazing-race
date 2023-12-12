@@ -251,7 +251,9 @@ async def start_approval_process(
         )
         return loop_conv_state
 
-    context.user_data.get("job").schedule_removal()
+    job = context.user_data.get("job")
+    if job:
+        job.schedule_removal()
     await waiting_msg.edit_text(
         f"Waiting for admin approval... Approved by @{approver}!"
     )
