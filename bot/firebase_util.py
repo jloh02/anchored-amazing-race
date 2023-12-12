@@ -80,8 +80,16 @@ def register_admin(username: str):
     db.collection("admins").document(username).update({"registered": True})
 
 
+group_cache = {}
+
+
 def get_user_group(username: str) -> firestore.firestore.DocumentReference:
-    return db.collection("users").document(username).get().to_dict()["group"]
+    if username in group_cache:
+        return group_cache[username]
+    group_cache[username] = (
+        db.collection("users").document(username).get().to_dict()["group"]
+    )
+    return group_cache[username]
 
 
 def get_role(username: str) -> Role:
@@ -225,16 +233,23 @@ def next_location(
     return (group, None, None) if race_completed else get_current_challenge(username)
 
 
+challenge_cache = {}
+
+
+def get_challenge(location: str):
+    if not location in challenge_cache:
+        challenge_cache[location] = (
+            db.collection("challenges").document(location).get().to_dict()
+        )
+    return challenge_cache[location]
+
+
 def get_current_step(
     location: str, challenge_num: int, step_number: int
 ) -> dict | None:
     try:
-        return (
-            db.collection("challenges")
-            .document(location)
-            .get()
-            .to_dict()["challenges"][challenge_num]["steps"][step_number]
-        )
+        doc = get_challenge(location)
+        return doc["challenges"][challenge_num]["steps"][step_number]
     except IndexError:
         return None
 
@@ -244,9 +259,9 @@ def complete_challenge(username: str, location: str, chall_num: int) -> bool:
     group_ref.update(
         {"challenges_completed": firestore.firestore.ArrayUnion([chall_num])}
     )
-    return len(
-        db.collection("challenges").document(location).get().to_dict()["challenges"]
-    ) - len(group_ref.get().to_dict()["challenges_completed"])
+    return len(get_challenge(location)["challenges"]) - len(
+        group_ref.get().to_dict()["challenges_completed"]
+    )
 
 
 def generate_approval_request() -> str:
