@@ -3,7 +3,7 @@ import json
 import asyncio
 import datetime
 import firebase_admin
-from constants import Role, Direction
+from constants import Role, Direction, RECENT_LOCATION_MAX_TIME, NUMBER_LOCATIONS
 from firebase_admin import credentials, firestore
 
 db = None
@@ -102,7 +102,6 @@ def set_location(username: str, lat: float, lng: float):
     )
 
 
-# last 5 minutes
 def recent_location_update(username: str) -> bool:
     user = db.collection("users").document(username).get().to_dict()
     try:
@@ -111,7 +110,7 @@ def recent_location_update(username: str) -> bool:
             and (
                 datetime.datetime.now(datetime.timezone.utc) - user["last_update"]
             ).total_seconds()
-            < 300
+            < RECENT_LOCATION_MAX_TIME
         )
     except KeyError:
         return False
@@ -128,7 +127,7 @@ def get_start_chall_index(direction: Direction) -> int:
     if direction == Direction.A0:
         return 1
     if direction == Direction.B0:
-        return 4
+        return NUMBER_LOCATIONS
     return 0
 
 
@@ -184,8 +183,8 @@ def next_location(
     )
 
     if new_location_index < 0:
-        new_location_index = 4
-    elif new_location_index > 4:
+        new_location_index = NUMBER_LOCATIONS
+    elif new_location_index > NUMBER_LOCATIONS:
         new_location_index = 0
 
     race_completed = new_location_index == get_start_chall_index(

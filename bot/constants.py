@@ -1,5 +1,14 @@
 from enum import Enum
 
+RECENT_LOCATION_MAX_TIME = 300  # seconds
+NUMBER_LOCATIONS = 4
+PHOTO_ROTATION_TIME = 10  # seconds
+
+# Performance tuning
+TELEGRAM_READ_TIMEOUT = 10
+TELEGRAM_CONCURRENT_UPDATES = 16
+CONVERSATION_TIMEOUT = 600
+
 
 class Role(Enum):
     Admin = 0

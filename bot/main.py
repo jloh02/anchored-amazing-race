@@ -17,7 +17,13 @@ from telegram.ext import (
     filters,
 )
 
-from constants import Role, ConvState
+from constants import (
+    Role,
+    ConvState,
+    TELEGRAM_READ_TIMEOUT,
+    TELEGRAM_CONCURRENT_UPDATES,
+    CONVERSATION_TIMEOUT,
+)
 import firebase_util
 from middleware import (
     dm_only_command,
@@ -82,8 +88,8 @@ def main() -> None:
     application = (
         Application.builder()
         .token(os.environ.get("TELEGRAM_BOT_KEY"))
-        .read_timeout(10)
-        .concurrent_updates(16)
+        .read_timeout(TELEGRAM_READ_TIMEOUT)
+        .concurrent_updates(TELEGRAM_CONCURRENT_UPDATES)
         .build()
     )
 
@@ -140,7 +146,7 @@ def main() -> None:
             ConvState.SubmitVideo: [MessageHandler(filters.VIDEO, submit_video)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
-        conversation_timeout=600,
+        conversation_timeout=CONVERSATION_TIMEOUT,
     )
     application.add_handler(conv_handler)
     application.add_handler(CallbackQueryHandler(handle_approval, r"chall\|.*"))

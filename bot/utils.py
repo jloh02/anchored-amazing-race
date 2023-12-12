@@ -3,7 +3,7 @@ import random
 from functools import reduce
 from telegram import Bot, InputMediaPhoto
 from telegram.ext import ContextTypes
-from constants import ConvState, ChallengeType
+from constants import ConvState, ChallengeType, PHOTO_ROTATION_TIME
 
 
 async def send_challenges(bot: Bot, chat_id: int, loc: str, challenges):
@@ -43,7 +43,7 @@ async def send_step(chat_id: id, context: ContextTypes.DEFAULT_TYPE, step):
 
         job = context.job_queue.run_repeating(
             rotate_photo,
-            10,
+            PHOTO_ROTATION_TIME,
             data={"idx": start_idx, "filenames": filenames},
         )
         context.user_data.update({"job": job})
