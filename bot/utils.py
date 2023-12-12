@@ -22,7 +22,6 @@ async def send_step(chat_id: id, context: ContextTypes.DEFAULT_TYPE, step):
     if "rotating_media" in step:
         dir = "images/" + step["rotating_media"] + "/"
         filenames = list(map(lambda x: dir + x, os.listdir(dir)))
-        print(filenames)
         files = list(
             map(
                 lambda x: InputMediaPhoto(open(x, "rb"), caption=step["description"]),
@@ -42,8 +41,12 @@ async def send_step(chat_id: id, context: ContextTypes.DEFAULT_TYPE, step):
                 ctx.job.data["idx"] = 0
             await msg.edit_media(files[ctx.job.data["idx"]])
 
-        job = context.job_queue.run_repeating(rotate_photo, 10, data={"idx": start_idx})
-        return msg, job
+        job = context.job_queue.run_repeating(
+            rotate_photo,
+            10,
+            data={"idx": start_idx, "filenames": filenames},
+        )
+        context.user_data.update({"job": job})
 
     elif "media" in step:
         await context.bot.send_photo(

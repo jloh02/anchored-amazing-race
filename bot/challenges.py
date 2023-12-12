@@ -5,10 +5,7 @@ from telegram import (
     Update,
     InputMediaPhoto,
 )
-from telegram.ext import (
-    ContextTypes,
-    ConversationHandler,
-)
+from telegram.ext import ContextTypes, ConversationHandler, Job
 
 import firebase_util
 from utils import send_challenges, challenge_type_to_conv_state, send_step
@@ -112,7 +109,7 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
 
         await send_challenges(
             context.bot,
-            group_info["broadcast_channel"],
+            group_info.get("broadcast_channel"),
             loc,
             challenge,
         )
@@ -139,9 +136,17 @@ async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int
     return await process_next_step(update, context)
 
 
-def get_approval_content(update, context, step, approval_id):
+def get_approval_content(
+    update: Update, context: ContextTypes.DEFAULT_TYPE, step, approval_id
+):
+    rotating_job = context.user_data.get("job")
+    rotating_content = (
+        f"\n - Rotation: {rotating_job.data['filenames'][rotating_job.data['idx']].split('/')[-1]}"
+        if rotating_job
+        else ""
+    )
     return (
-        f"Admins! 빨리주세요! Approve @{update.message.from_user.username} submission for {context.user_data.get('challenge_location')} Challenge #{context.user_data.get('challenge_number')} ({step.get('description')})\n\nRequest ID: {approval_id}",
+        f"Admins! 빨리주세요! Approve @{update.message.from_user.username} submission for {context.user_data.get('challenge_location')} Challenge #{context.user_data.get('challenge_number')} ({step.get('description')}){rotating_content}\n\nRequest ID: {approval_id}",
         InlineKeyboardMarkup(
             [
                 [
@@ -245,6 +250,8 @@ async def start_approval_process(
             f"Haizzz, admins not paying attention... Ask @{update.message.from_user.username} to submit it again"
         )
         return loop_conv_state
+
+    context.user_data.get("job").schedule_removal()
     await waiting_msg.edit_text(
         f"Waiting for admin approval... Approved by @{approver}!"
     )
