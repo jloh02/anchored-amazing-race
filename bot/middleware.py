@@ -34,7 +34,7 @@ def role_restricted_command(callback, allow: list[Role], quiet=False) -> SCT:
         message = update.message if update.message else update.edited_message
         if not context.user_data.get("role") in allow:
             if not quiet:
-                await message.reply_text("Unauthorized User")
+                await message.reply_text("Unauthorized user. Try /start if you have not")
             return ConversationHandler.END
         return await callback(update, context)
 
