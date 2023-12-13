@@ -61,9 +61,9 @@ def get_admin_broadcast() -> int:
     if broadcast_channel:
         return broadcast_channel
 
-    broadcast_channel = (
-        db.collection("admins").document("_globals").get().to_dict()["broadcast"]
-    )
+    res = db.collection("admins").document("_globals").get().to_dict()
+    broadcast_channel = (res.get("broadcast"), res.get("broadcast_thread"))
+    print(broadcast_channel)
     return broadcast_channel
 
 

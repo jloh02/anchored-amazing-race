@@ -194,15 +194,18 @@ async def start_approval_process(
         APPROVAL_MESSAGE, APPROVAL_MARKUP = get_approval_content(
             update, context, step, approval_id
         )
+        admin_broadcast, admin_broadcast_thread = firebase_util.get_admin_broadcast()
         await context.bot.send_media_group(
-            firebase_util.get_admin_broadcast(),
+            admin_broadcast,
             [InputMediaPhoto(p) for p in photos[:-1]],
+            message_thread_id=admin_broadcast_thread,
         )
         approver_captioned_msg = await context.bot.send_photo(
-            firebase_util.get_admin_broadcast(),
+            admin_broadcast,
             photos[-1].file_id,
             caption=APPROVAL_MESSAGE,
             reply_markup=APPROVAL_MARKUP,
+            message_thread_id=admin_broadcast_thread,
         )
         approver_captioned_msg_fn = approver_captioned_msg.edit_text
     else:
@@ -223,11 +226,13 @@ async def start_approval_process(
             update, context, step, approval_id
         )
 
+        admin_broadcast, admin_broadcast_thread = firebase_util.get_admin_broadcast()
         approver_captioned_msg = await send_fn(
-            firebase_util.get_admin_broadcast(),
+            admin_broadcast,
             media_id,
             caption=APPROVAL_MESSAGE,
             reply_markup=APPROVAL_MARKUP,
+            message_thread_id=admin_broadcast_thread,
         )
         approver_captioned_msg_fn = approver_captioned_msg.edit_caption
 

@@ -131,9 +131,11 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         challenge,
     )
 
+    admin_broadcast, admin_broadcast_thread = firebase_util.get_admin_broadcast()
     await context.bot.send_message(
-        firebase_util.get_admin_broadcast(),
+        admin_broadcast,
         f"{group_info['name']} has started the race",
+        message_thread_id=admin_broadcast_thread,
     )
     logger.info(
         f"@{query.from_user.username} selected direction for {group_info['name']}: {query.data}"
