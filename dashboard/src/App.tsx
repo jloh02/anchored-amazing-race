@@ -1,10 +1,16 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
+import { useState, useEffect } from "react";
 import "./App.css";
 import { initializeAuth } from "firebase/auth";
 import { initializeApp } from "firebase/app";
-import Login from "./login";
+import Login from "./login.js";
+import { GoogleAuthProvider, signInWithCredential } from "firebase/auth";
+import {
+  initializeFirestore,
+  doc,
+  getDoc,
+  Firestore,
+} from "firebase/firestore";
+import { Dimmer, Loader, Segment } from "semantic-ui-react";
 
 const app = initializeApp({
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -18,31 +24,46 @@ const app = initializeApp({
 const auth = initializeAuth(app);
 
 function App() {
-  const [count, setCount] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [googleCreds, setGoogleCreds] = useState("");
+  const [authorized, setAuthorized] = useState(false);
+  const [db, setDb] = useState<Firestore | null>(null);
+
+  useEffect(() => {
+    if (googleCreds.length == 0) return;
+    const idToken = googleCreds;
+    const credential = GoogleAuthProvider.credential(idToken);
+
+    console.log("Signed into Google");
+
+    // Sign in with credential from the Google user.
+    signInWithCredential(auth, credential)
+      .catch((error) => console.error(error))
+      .then(async () => {
+        try {
+          const db = initializeFirestore(app, {});
+          setDb(db);
+          await getDoc(doc(db, "admins", "_globals"));
+          setAuthorized(true);
+        } catch (e) {
+          setAuthorized(false);
+        } finally {
+          setLoading(false);
+        }
+      });
+  }, [googleCreds]);
 
   return (
     <>
-      <div>
-        <a href="https://vitejs.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-      <Login auth={auth}></Login>
+      {!loading || (
+        <Dimmer inverted active>
+          <Loader inverted>Loading...</Loader>
+        </Dimmer>
+      )}
+      <Login callback={setGoogleCreds}></Login>
+
+      {loading || googleCreds.length == 0 || authorized || <p>Access Denied</p>}
+      {loading || googleCreds.length == 0 || !authorized || <p>You're In!</p>}
     </>
   );
 }

@@ -1,32 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Modal } from "semantic-ui-react";
-import { Auth, EmailAuthProvider } from "firebase/auth";
-import * as firebaseui from "firebaseui";
+import { GoogleLogin } from "@react-oauth/google";
 
-function Login({ auth }: { auth: Auth }) {
+function Login({ callback }: { callback: (creds: string) => void }) {
   const [open, setOpen] = useState(true);
-  // const [email, setEmail] = useState("");
-  // const [password, setPassword] = useState("");
-
-  useEffect(() => {
-    const ui =
-      firebaseui.auth.AuthUI.getInstance() || new firebaseui.auth.AuthUI(auth);
-    ui.start("#firebase-auth-container", {
-      signInOptions: [
-        {
-          provider: EmailAuthProvider.PROVIDER_ID,
-          requireDisplayName: false,
-          // disableSignUp: { status: true },
-        },
-      ],
-      callbacks: {
-        signInSuccessWithAuthResult: (authResult, redirectUrl) => {
-          setOpen(false);
-          return false;
-        },
-      },
-    });
-  }, [auth]);
 
   return (
     <>
@@ -34,12 +11,20 @@ function Login({ auth }: { auth: Auth }) {
         closeOnEscape={false}
         closeOnDimmerClick={false}
         open={open}
-        onClose={() => {
-          "WEEEEEEEE";
-        }}
+        style={{ width: "fit-content" }}
       >
+        <Modal.Header>Sign In</Modal.Header>
         <Modal.Content>
-          <div id="firebase-auth-container"></div>
+          <p>Authorized Users Only!</p>
+          <GoogleLogin
+            onSuccess={(res) => {
+              callback(res.credential ?? "");
+              setOpen(false);
+            }}
+            onError={() => {
+              console.log("ERROR");
+            }}
+          />
         </Modal.Content>
       </Modal>
     </>
