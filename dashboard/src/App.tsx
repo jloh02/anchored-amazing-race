@@ -10,7 +10,15 @@ import {
   getDoc,
   Firestore,
 } from "firebase/firestore";
-import { Dimmer, Loader, Segment } from "semantic-ui-react";
+import { Dimmer, Loader } from "semantic-ui-react";
+import {
+  GoogleMap,
+  LoadScript,
+  MarkerF,
+  InfoWindowF,
+} from "@react-google-maps/api";
+import dotUrl from "./assets/dot.png";
+import Dashboard from "./dashboard.js";
 
 const app = initializeApp({
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -24,38 +32,38 @@ const app = initializeApp({
 const auth = initializeAuth(app);
 
 function App() {
-  const [loading, setLoading] = useState(true);
-  const [googleCreds, setGoogleCreds] = useState("");
-  const [authorized, setAuthorized] = useState(false);
-  const [db, setDb] = useState<Firestore | null>(null);
+  // const [loading, setLoading] = useState(true);
+  // const [googleCreds, setGoogleCreds] = useState("");
+  // const [authorized, setAuthorized] = useState(false);
+  // const [db, setDb] = useState<Firestore | null>(null);
 
-  useEffect(() => {
-    if (googleCreds.length == 0) return;
-    const idToken = googleCreds;
-    const credential = GoogleAuthProvider.credential(idToken);
+  // useEffect(() => {
+  //   if (googleCreds.length == 0) return;
+  //   const idToken = googleCreds;
+  //   const credential = GoogleAuthProvider.credential(idToken);
 
-    console.log("Signed into Google");
+  //   console.log("Signed into Google");
 
-    // Sign in with credential from the Google user.
-    signInWithCredential(auth, credential)
-      .catch((error) => console.error(error))
-      .then(async () => {
-        try {
-          const db = initializeFirestore(app, {});
-          setDb(db);
-          await getDoc(doc(db, "admins", "_globals"));
-          setAuthorized(true);
-        } catch (e) {
-          setAuthorized(false);
-        } finally {
-          setLoading(false);
-        }
-      });
-  }, [googleCreds]);
+  //   // Sign in with credential from the Google user.
+  //   signInWithCredential(auth, credential)
+  //     .catch((error) => console.error(error))
+  //     .then(async () => {
+  //       try {
+  //         const db = initializeFirestore(app, {});
+  //         setDb(db);
+  //         await getDoc(doc(db, "admins", "_globals"));
+  //         setAuthorized(true);
+  //       } catch (e) {
+  //         setAuthorized(false);
+  //       } finally {
+  //         setLoading(false);
+  //       }
+  //     });
+  // }, [googleCreds]);
 
   return (
     <>
-      {!loading || (
+      {/* {!loading || (
         <Dimmer inverted active>
           <Loader inverted>Loading...</Loader>
         </Dimmer>
@@ -63,7 +71,8 @@ function App() {
       <Login callback={setGoogleCreds}></Login>
 
       {loading || googleCreds.length == 0 || authorized || <p>Access Denied</p>}
-      {loading || googleCreds.length == 0 || !authorized || <p>You're In!</p>}
+      {loading || googleCreds.length == 0 || !authorized || <p>You're In!</p>} */}
+      <Dashboard />
     </>
   );
 }
