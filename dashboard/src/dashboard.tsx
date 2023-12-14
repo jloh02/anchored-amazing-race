@@ -1,10 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import {
   GoogleMap,
   LoadScript,
   MarkerF,
   InfoWindowF,
 } from "@react-google-maps/api";
+import {
+  collection,
+  query,
+  onSnapshot,
+  Firestore,
+  Unsubscribe,
+  orderBy,
+  DocumentReference,
+  GeoPoint,
+  getDocs,
+  Timestamp,
+} from "firebase/firestore";
 import dotUrl from "./assets/dot.png";
 import { Grid, Header, Segment } from "semantic-ui-react";
 
@@ -16,22 +28,82 @@ const remove_button_css = `
   display: none !important;
 }`;
 
-export default function Dashboard() {
-  const [markers, setMarkers] = useState([
-    {
-      id: 1,
-      position: { lat: 37.7749, lng: -122.4194 },
-      content: "Marker 1 Info",
-    },
-    {
-      id: 2,
-      position: { lat: 37.7749, lng: -122.4294 },
-      content: "Marker 2 Info",
-    },
-    // Add more markers as needed
-  ]);
-  const defaultCenter = { lat: 1.3521, lng: 103.8198 };
-  const handleMarkerClick = (marker: object) => {
+const DEFAULT_CENTER = { lat: 1.3521, lng: 103.8198 };
+
+interface User {
+  group: DocumentReference;
+  registered: boolean;
+  location: GeoPoint;
+  last_update: Timestamp;
+}
+
+interface Marker {
+  id: number;
+  position: google.maps.LatLng;
+  last_update: Date;
+  group_num: number;
+}
+
+export default function Dashboard({ db }: { db: Firestore | null }) {
+  const userListenerUnsub = useRef<Unsubscribe | undefined>();
+  const groupListenerUnsub = useRef<Unsubscribe | undefined>();
+
+  const [users, setUsers] = useState<User[]>([]);
+  const [groups, setGroups] = useState(new Map());
+
+  useEffect(() => {
+    if (!db) return;
+
+    if (groupListenerUnsub.current) groupListenerUnsub.current();
+    groupListenerUnsub.current = onSnapshot(
+      collection(db, "groups"),
+      (querySnapshot) => {
+        console.log(querySnapshot.size, querySnapshot.metadata);
+        const tmpGroups = new Map();
+        querySnapshot.forEach((doc) => tmpGroups.set(doc.id, doc.data()));
+        console.log(tmpGroups);
+        setGroups(tmpGroups);
+      },
+      (error) => {
+        console.error("Error fetching groups: ", error);
+      }
+    );
+
+    if (userListenerUnsub.current) userListenerUnsub.current();
+    userListenerUnsub.current = onSnapshot(
+      query(collection(db, "users"), orderBy("location")),
+      (querySnapshot) => {
+        console.log(querySnapshot.size, querySnapshot.metadata);
+        const tmpUsers: User[] = [];
+        querySnapshot.forEach((doc) => tmpUsers.push(doc.data() as User));
+        console.log(tmpUsers);
+        setUsers(tmpUsers);
+      },
+      (error) => {
+        console.error("Error fetching users: ", error);
+      }
+    );
+  }, [db]);
+
+  const markers = useMemo(() => {
+    return users.map<Marker>((user, idx) => {
+      return {
+        id: idx,
+        position: new google.maps.LatLng(
+          user.location.latitude,
+          user.location.longitude
+        ),
+        last_update: user.last_update.toDate(),
+        group_num: parseInt(user.group.id),
+      };
+    });
+  }, [users]);
+
+  useEffect(() => {
+    console.log(markers, groups, users);
+  }, [markers, groups, users]);
+
+  const handleMarkerClick = (marker: Marker) => {
     setSelectedMarker(marker);
   };
 
@@ -40,11 +112,9 @@ export default function Dashboard() {
     setSelectedMarker(null);
   };
 
-  const [selectedMarker, setSelectedMarker] = useState<any>(null);
+  const [selectedMarker, setSelectedMarker] = useState<Marker | null>(null);
 
-  // useEffect(() => {
-  //   handleMarkerClick(markers[0]);
-  // }, [markers]);
+  if (!db) return <Header>Firestore DB null</Header>;
 
   return (
     <Grid style={{ height: "100%", width: "100%" }}>
@@ -57,7 +127,7 @@ export default function Dashboard() {
             <style scoped>{remove_button_css}</style>
             <GoogleMap
               mapContainerStyle={{ height: "100%", width: "100%" }} //TODO change this to classname
-              center={defaultCenter}
+              center={DEFAULT_CENTER}
               zoom={13}
               options={{
                 mapTypeControl: false,
@@ -75,7 +145,7 @@ export default function Dashboard() {
                 >
                   {selectedMarker && selectedMarker.id === marker.id && (
                     <InfoWindowF position={selectedMarker.position}>
-                      <div>{selectedMarker.content}</div>
+                      <div>{selectedMarker.last_update.toISOString()}</div>
                     </InfoWindowF>
                   )}
                 </MarkerF>
