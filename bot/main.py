@@ -194,19 +194,19 @@ async def main() -> None:
       )
         
       @flask_app.get("/ping")  
-      async def health() -> Response:
+      async def ping() -> Response:
           response = make_response("pong", HTTPStatus.OK)
           response.mimetype = "text/plain"
           return response
       
       @flask_app.get("/logs/err")  
-      async def health() -> Response:
+      async def logs_err() -> Response:
           response = make_response(get_logs(True), HTTPStatus.OK)
           response.mimetype = "text/plain"
           return response
       
       @flask_app.get("/logs/out")  
-      async def health() -> Response:
+      async def logs_out() -> Response:
           response = make_response(get_logs(False), HTTPStatus.OK)
           response.mimetype = "text/plain"
           return response
