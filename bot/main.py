@@ -20,7 +20,8 @@ from telegram.ext import (
 import uvicorn
 from http import HTTPStatus
 from asgiref.wsgi import WsgiToAsgi
-from flask import Flask, Response, abort, make_response, request
+from flask import Flask, Response, make_response, request
+from flask_cors import CORS
 
 from constants import (
     Role,
@@ -185,6 +186,7 @@ async def main() -> None:
     # Run the bot until the user presses Ctrl-C
     if os.environ.get("WEBHOOK_URL"): 
       flask_app = Flask(__name__)
+      CORS(flask_app)
 
       @flask_app.post("/telegram")
       async def telegram() -> Response:
