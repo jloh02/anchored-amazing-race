@@ -120,13 +120,13 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     )
 
     await context.bot.send_message(
-        group_info["broadcast_channel"],
+        group_info.get("broadcast_channel"),
         f"Ahoy! The treasure hunt begins!\n\nRoute Chosen: Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
     )
 
     await send_challenges(
         context.bot,
-        group_info["broadcast_channel"],
+        group_info.get("broadcast_channel"),
         loc,
         challenge,
     )
@@ -134,7 +134,7 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     admin_broadcast, admin_broadcast_thread = firebase_util.get_admin_broadcast()
     await context.bot.send_message(
         admin_broadcast,
-        f"{group_info['name']} has started the race",
+        f"{group_info.get('name')} has started the race",
         message_thread_id=admin_broadcast_thread,
     )
     logger.info(
