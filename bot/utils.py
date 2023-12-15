@@ -1,5 +1,6 @@
 import os
 import random
+import subprocess
 from functools import reduce
 from telegram import Bot, InputMediaPhoto
 from telegram.ext import ContextTypes
@@ -65,3 +66,17 @@ def challenge_type_to_conv_state(chall_type: ChallengeType):
         return ConvState.SubmitVideo
     elif chall_type == ChallengeType.Photo:
         return ConvState.SubmitPhoto
+
+def get_logs(err: bool):
+    try:
+        result = subprocess.run(['pm2', 'logs', 'bot', ('--err' if err else '--out'), '--nostream', '--lines 100'], capture_output=True, text=True)
+
+        if result.returncode == 0:
+            return result.stdout
+        else:
+            return f"Error reading logs: {result.stderr}"
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+    
+    return "Error"

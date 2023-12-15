@@ -53,6 +53,7 @@ from challenges import (
     handle_approval,
 )
 from misc_commands import end_race
+from utils import get_logs
 
 load_dotenv()
 firebase_util.init()
@@ -182,9 +183,8 @@ async def main() -> None:
     if os.environ.get("WEBHOOK_URL"): 
       flask_app = Flask(__name__)
 
-      @flask_app.post("/telegram")  # type: ignore[misc]
+      @flask_app.post("/telegram")
       async def telegram() -> Response:
-          """Handle incoming Telegram updates by putting them into the `update_queue`"""
           await application.update_queue.put(Update.de_json(data=request.json, bot=application.bot))
           return Response(status=HTTPStatus.OK)
 
@@ -193,14 +193,24 @@ async def main() -> None:
         allowed_updates=Update.ALL_TYPES
       )
         
-      @flask_app.get("/healthcheck")  # type: ignore[misc]
+      @flask_app.get("/ping")  
       async def health() -> Response:
-          """For the health endpoint, reply with a simple plain text message."""
-          response = make_response("The bot is still running fine :)", HTTPStatus.OK)
+          response = make_response("pong", HTTPStatus.OK)
           response.mimetype = "text/plain"
           return response
       
+      @flask_app.get("/logs/err")  
+      async def health() -> Response:
+          response = make_response(get_logs(True), HTTPStatus.OK)
+          response.mimetype = "text/plain"
+          return response
       
+      @flask_app.get("/logs/out")  
+      async def health() -> Response:
+          response = make_response(get_logs(False), HTTPStatus.OK)
+          response.mimetype = "text/plain"
+          return response
+
       webserver = uvicorn.Server(
         config=uvicorn.Config(
             app=WsgiToAsgi(flask_app),
