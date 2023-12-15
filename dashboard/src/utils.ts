@@ -1,3 +1,7 @@
+export function getIcon(i: number) {
+  return new URL(`./assets/${i}.png`, import.meta.url).href;
+}
+
 export function timeSince(date: Date) {
   const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
 
@@ -20,7 +24,7 @@ export function timeSince(date: Date) {
   }
   interval = seconds / 60;
   if (interval > 1) {
-    return Math.floor(interval) + " m" + Math.floor(seconds) + " s";
+    return Math.floor(interval) + "m " + Math.floor(seconds % 60) + "s";
   }
-  return Math.floor(seconds) + " s";
+  return Math.floor(seconds) + "s";
 }

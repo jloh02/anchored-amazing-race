@@ -17,8 +17,7 @@ import {
   Timestamp,
 } from "firebase/firestore";
 import { Grid, Header, HeaderSubheader, Segment } from "semantic-ui-react";
-import { timeSince } from "./utils.js";
-import dotUrl from "./assets/dot.png";
+import { getIcon, timeSince } from "./utils.js";
 
 const remove_button_css = `
 .gm-style-iw {
@@ -158,7 +157,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                     onClick={() =>
                       window.open(`https://t.me/${marker.username}`, "_blank")
                     }
-                    icon={dotUrl}
+                    icon={getIcon(marker.group_num)}
                   >
                     {selectedMarker && selectedMarker.id === marker.id && (
                       <InfoWindowF position={selectedMarker.position}>
