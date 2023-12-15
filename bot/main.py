@@ -162,12 +162,11 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_approval, r"chall\|.*"))
 
     # Run the bot until the user presses Ctrl-C
-    if os.environ.get("PORT"): 
+    if os.environ.get("WEBHOOK_URL"): 
       application.run_webhook(
-        listen="127.0.0.1",
-        port=os.environ.get("PORT"), 
         cert="./certificate.pem", 
         key="./private_key.pem", 
+        webhook_url=os.environ.get("WEBHOOK_URL"), 
         allowed_updates=Update.ALL_TYPES
       )
     else:  
