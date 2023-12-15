@@ -19,7 +19,7 @@ def generate_colored_circle(hex_code, sz=15,border=2,border_color=(128,128,128))
 
     return image
 
-def generate_colored_circle_svg(hex_code, sz=15):
+def generate_colored_circle_svg(hex_code, sz=16, stroke='none'):
     # Remove hex
     hex_code = hex_code[1:]
 
@@ -29,17 +29,19 @@ def generate_colored_circle_svg(hex_code, sz=15):
     rgb_color = tuple(int(hex_code[i:i+2], 16) for i in (0, 2, 4))
 
     # Draw a colored circle
-    dwg.add(dwg.ellipse(center=(sz/2,sz/2), r=(sz/2,sz/2),
-                        fill=f'rgb{rgb_color}', stroke='none'))
+    dwg.add(dwg.ellipse(center=(sz/2,sz/2), r=(sz/2-1,sz/2-1),
+                        fill=f'rgb{rgb_color}', stroke=stroke))
 
     return dwg.tostring()
 
 def generate_images(hex_codes, save_path='output'):
     for idx,hex in enumerate(hex_codes):
         # image = generate_colored_circle(hex)
-        # image.save(f'{save_path}/{idx}.png')
-        with open(f'{save_path}/{idx}.svg', 'w') as svg_file:
+        # image.save(f'{save_path}/{idx+1}.png')
+        with open(f'{save_path}/{idx+1}.svg', 'w') as svg_file:
             svg_file.write(generate_colored_circle_svg(hex))
+        with open(f'{save_path}/{idx+1}_outline.svg', 'w') as svg_file:
+            svg_file.write(generate_colored_circle_svg(hex, stroke="black"))
 
 
 if __name__ == "__main__":

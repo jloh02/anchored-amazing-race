@@ -16,8 +16,23 @@ import {
   GeoPoint,
   Timestamp,
 } from "firebase/firestore";
-import { Grid, Header, HeaderSubheader, Segment } from "semantic-ui-react";
-import { getIcon, timeSince } from "./utils.js";
+import {
+  Button,
+  Card,
+  Feed,
+  Grid,
+  Header,
+  HeaderSubheader,
+  Modal,
+  Segment,
+} from "semantic-ui-react";
+import {
+  getIcon,
+  getProgress,
+  getProgressStr,
+  Group,
+  timeSince,
+} from "./utils.js";
 
 const remove_button_css = `
 .gm-style-iw {
@@ -50,7 +65,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
   const groupListenerUnsubRef = useRef<Unsubscribe | undefined>();
 
   const [users, setUsers] = useState<User[]>([]);
-  const [groups, setGroups] = useState(new Map());
+  const [groups, setGroups] = useState<Map<number, Group>>(new Map());
 
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
@@ -67,7 +82,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         console.log(querySnapshot.size, querySnapshot.metadata);
         const tmpGroups = new Map();
         querySnapshot.forEach((doc) =>
-          tmpGroups.set(parseInt(doc.id), doc.data())
+          tmpGroups.set(parseInt(doc.id), doc.data() as Group)
         );
         console.log(tmpGroups);
         setGroups(tmpGroups);
@@ -157,7 +172,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                     onClick={() =>
                       window.open(`https://t.me/${marker.username}`, "_blank")
                     }
-                    icon={getIcon(marker.group_num)}
+                    icon={getIcon(marker.group_num, true)}
                   >
                     {selectedMarker && selectedMarker.id === marker.id && (
                       <InfoWindowF position={selectedMarker.position}>
@@ -189,18 +204,63 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
       </Grid.Column>
 
       {/* Right Column (Split into 2 sections) */}
-      <Grid.Column width={4}>
-        {/* First section in the right column */}
-        <Grid.Row style={{ height: "50%", width: "100%" }}>
-          <Header>Progress</Header>
-        </Grid.Row>
-
-        {/* Second section in the right column */}
-        <Grid.Row style={{ height: "50%", width: "100%" }}>
-          {/* Content of the second section */}
-          {/* You can add your components/content here */}
-          <Header>Logs</Header>
-        </Grid.Row>
+      <Grid.Column
+        width={4}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          width: "100%",
+        }}
+      >
+        <>
+          <Card>
+            <Card.Content style={{ height: "100%", paddingBottom: "3rem" }}>
+              <Header>Leaderboard</Header>
+              <div
+                style={{
+                  height: "100%",
+                  overflowY: "scroll",
+                }}
+              >
+                {Array.from(groups.entries())
+                  .map(([k, group]) => {
+                    return {
+                      key: k,
+                      ...group,
+                    };
+                  })
+                  .sort((a, b) => {
+                    const progA = getProgress(a);
+                    const progB = getProgress(b);
+                    if (progA === progB) return a.name.localeCompare(b.name);
+                    return progB - progA;
+                  })
+                  .map((group) => (
+                    <Feed>
+                      <Feed.Event style={{ height: "" }}>
+                        <Feed.Label
+                          image={getIcon(group.key)}
+                          style={{ margin: "auto 0 auto 0" }}
+                        />
+                        <Feed.Content>
+                          <Feed.Summary>{group.name}</Feed.Summary>
+                          <p>{getProgressStr(group)}</p>
+                        </Feed.Content>
+                      </Feed.Event>
+                    </Feed>
+                  ))}
+              </div>
+            </Card.Content>
+          </Card>
+          <Modal
+            trigger={
+              <Button primary>
+                <p>Show Logs</p>
+              </Button>
+            }
+          ></Modal>
+        </>
       </Grid.Column>
     </Grid>
   );

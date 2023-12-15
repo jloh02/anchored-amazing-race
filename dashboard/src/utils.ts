@@ -1,5 +1,8 @@
-export function getIcon(i: number) {
-  return new URL(`./assets/${i}.svg`, import.meta.url).href;
+export function getIcon(i: number, outline?: boolean) {
+  return new URL(
+    `./assets/${i}${outline ? "_outline" : ""}.svg`,
+    import.meta.url
+  ).href;
 }
 
 export function timeSince(date: Date) {
@@ -29,9 +32,42 @@ export function timeSince(date: Date) {
   return Math.floor(seconds) + "s";
 }
 
-// def get_start_chall_index(direction: Direction) -> int:
-//     if direction == Direction.A0:
-//         return 1
-//     if direction == Direction.B0:
-//         return NUMBER_LOCATIONS
-//     return 0
+const NUMBER_LOCATIONS = 4;
+
+function getStartChallIndex(dir: string): number {
+  if (dir === "A0") return 1;
+  if (dir === "B0") return NUMBER_LOCATIONS;
+  return 0;
+}
+
+export interface Group {
+  key?: number;
+  name: string;
+  current_location?: number;
+  direction?: string;
+  race_completed?: boolean;
+  start_time?: Date;
+}
+
+export function getProgress(group: Group): number {
+  if (
+    !group.start_time ||
+    !group.direction ||
+    group.current_location === undefined
+  )
+    return -1;
+  if ("end_time" in group) return NUMBER_LOCATIONS + 1;
+
+  return Math.abs(
+    (group.current_location - getStartChallIndex(group.direction)) *
+      (group.direction.at(0) === "B" ? -1 : 1)
+  );
+}
+
+export function getProgressStr(group: Group): string {
+  const progress = getProgress(group);
+
+  if (progress === -1) return "Have not started";
+  if (progress === NUMBER_LOCATIONS + 1) return "Finished race";
+  return `${progress} locations finished`;
+}
