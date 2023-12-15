@@ -164,8 +164,8 @@ def main() -> None:
     # Run the bot until the user presses Ctrl-C
     if os.environ.get("WEBHOOK_URL"): 
       application.run_webhook(
-        cert="./certificate.pem", 
-        key="./private_key.pem", 
+        listen="0.0.0.0",
+        port="8080",
         webhook_url=os.environ.get("WEBHOOK_URL"), 
         allowed_updates=Update.ALL_TYPES
       )
