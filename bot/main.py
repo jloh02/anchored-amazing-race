@@ -162,7 +162,11 @@ def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_approval, r"chall\|.*"))
 
     # Run the bot until the user presses Ctrl-C
-    application.run_polling(allowed_updates=Update.ALL_TYPES)
+    if os.environ.get("PORT"): 
+      application.run_webhook(port=os.environ.get("PORT"), allowed_updates=Update.ALL_TYPES)
+    else:  
+      application.run_polling(allowed_updates=Update.ALL_TYPES)
+    
 
 
 if __name__ == "__main__":
