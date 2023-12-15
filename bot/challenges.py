@@ -6,6 +6,7 @@ from telegram import (
     InputMediaPhoto,
 )
 from telegram.ext import ContextTypes, ConversationHandler
+from apscheduler.jobstores.base import JobLookupError
 
 import firebase_util
 from utils import send_challenges, challenge_type_to_conv_state, send_step
@@ -258,7 +259,10 @@ async def start_approval_process(
 
     job = context.user_data.get("job")
     if job:
-        job.schedule_removal()
+        try:
+          job.schedule_removal()
+        except JobLookupError:
+          logger.warn("Unknown job ID:", job.id)
     await waiting_msg.edit_text(
         f"Waiting for admin approval... Approved by @{approver}!"
     )
