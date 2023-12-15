@@ -17,6 +17,11 @@ from telegram.ext import (
     filters,
 )
 
+import uvicorn
+from http import HTTPStatus
+from asgiref.wsgi import WsgiToAsgi
+from flask import Flask, Response, abort, make_response, request
+
 from constants import (
     Role,
     ConvState,
@@ -84,8 +89,11 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Resetted game state")
     return ConversationHandler.END
 
+async def infinity():
+  while True:
+    await asyncio.sleep(1)
 
-def main() -> None:
+async def main() -> None:
     application = (
         Application.builder()
         .token(os.environ.get("TELEGRAM_BOT_KEY"))
@@ -93,6 +101,19 @@ def main() -> None:
         .concurrent_updates(TELEGRAM_CONCURRENT_UPDATES)
         .build()
     )
+
+    await Bot(os.environ.get("TELEGRAM_BOT_KEY")).set_my_commands(
+            [
+                BotCommand("start", "Register user"),
+                BotCommand("configgroup", "Use current chat for group updates"),
+                BotCommand("submit", "Attempt a challenge"),
+                BotCommand("startrace", "Start the race (Only when told to do so)"),
+                BotCommand(
+                    "endrace", "Press at finishing line after challenges completed"
+                ),
+                BotCommand("cancel", "Cancel the command. Also use when bot hangs"),
+            ]
+        )
 
     conv_handler = ConversationHandler(
         entry_points=[
@@ -163,31 +184,53 @@ def main() -> None:
 
     # Run the bot until the user presses Ctrl-C
     if os.environ.get("WEBHOOK_URL"): 
-      application.run_webhook(
-        listen="0.0.0.0",
-        port="8080",
-        webhook_url=os.environ.get("WEBHOOK_URL"), 
+      flask_app = Flask(__name__)
+
+      @flask_app.post("/telegram")  # type: ignore[misc]
+      async def telegram() -> Response:
+          """Handle incoming Telegram updates by putting them into the `update_queue`"""
+          await application.update_queue.put(Update.de_json(data=request.json, bot=application.bot))
+          return Response(status=HTTPStatus.OK)
+
+      await application.bot.set_webhook(
+        url=f"{os.environ.get('WEBHOOK_URL')}/telegram", 
         allowed_updates=Update.ALL_TYPES
       )
-    else:  
-      application.run_polling(allowed_updates=Update.ALL_TYPES)
+        
+      @flask_app.get("/healthcheck")  # type: ignore[misc]
+      async def health() -> Response:
+          """For the health endpoint, reply with a simple plain text message."""
+          response = make_response("The bot is still running fine :)", HTTPStatus.OK)
+          response.mimetype = "text/plain"
+          return response
+      
+      
+      webserver = uvicorn.Server(
+        config=uvicorn.Config(
+            app=WsgiToAsgi(flask_app),
+            port="8080",
+            use_colors=False,
+            host="0.0.0.0",
+        )
+      )
+
+      async with application:
+        await application.initialize()
+        await application.start()
+        await webserver.serve()
+        await application.stop()
+        await application.shutdown()
+    
+    else:
+      async with application:
+        await application.initialize()
+        await application.start()
+        await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+        await infinity()
+        await application.updater.stop()
+        await application.stop()
+        await application.shutdown()
     
 
-
 if __name__ == "__main__":
-    loop = asyncio.get_event_loop()
-    loop.run_until_complete(
-        Bot(os.environ.get("TELEGRAM_BOT_KEY")).set_my_commands(
-            [
-                BotCommand("start", "Register user"),
-                BotCommand("configgroup", "Use current chat for group updates"),
-                BotCommand("submit", "Attempt a challenge"),
-                BotCommand("startrace", "Start the race (Only when told to do so)"),
-                BotCommand(
-                    "endrace", "Press at finishing line after challenges completed"
-                ),
-                BotCommand("cancel", "Cancel the command. Also use when bot hangs"),
-            ]
-        )
-    )
-    loop.run_until_complete(main())
+    asyncio.run(main())
