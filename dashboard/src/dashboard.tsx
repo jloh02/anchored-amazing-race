@@ -23,6 +23,7 @@ import {
   Grid,
   Header,
   HeaderSubheader,
+  Loader,
   Modal,
   Segment,
 } from "semantic-ui-react";
@@ -34,13 +35,23 @@ import {
   timeSince,
 } from "./utils.js";
 
-const remove_button_css = `
+const custom_css = `
 .gm-style-iw {
   text-align: center;
 }
 .gm-style-iw > button {
   display: none !important;
-}`;
+}
+.ui.dimmer .ui.modal .ui.loader:before {
+  border-color: rgba(0,0,0,.1);
+}
+.ui.dimmer .ui.modal .ui.loader:after {
+  border-color: #767676 transparent transparent;
+}          
+.ui.dimmer .ui.modal .ui.loader p {
+  color: #767676;
+}
+`;
 
 const DEFAULT_CENTER = { lat: 1.3521, lng: 103.8198 };
 
@@ -58,6 +69,7 @@ interface Marker {
   last_update: Date;
   group_num: number;
   username: string;
+  icon: string;
 }
 
 export default function Dashboard({ db }: { db: Firestore | null }) {
@@ -66,6 +78,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
 
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Map<number, Group>>(new Map());
+  const [logs, setLogs] = useState("");
 
   const { isLoaded } = useJsApiLoader({
     id: "google-map-script",
@@ -122,6 +135,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         last_update: user.last_update.toDate(),
         group_num: parseInt(user.group.id),
         username: user.username,
+        icon: getIcon(parseInt(user.group.id), true),
       };
     });
   }, [users, isLoaded]);
@@ -152,7 +166,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         <Segment style={{ height: "100%", width: "100%" }}>
           {isLoaded && (
             <>
-              <style scoped>{remove_button_css}</style>
+              <style scoped>{custom_css}</style>
               <GoogleMap
                 mapContainerStyle={{ height: "100%", width: "100%" }} //TODO change this to classname
                 center={DEFAULT_CENTER}
@@ -172,7 +186,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                     onClick={() =>
                       window.open(`https://t.me/${marker.username}`, "_blank")
                     }
-                    icon={getIcon(marker.group_num, true)}
+                    icon={marker.icon}
                   >
                     {selectedMarker && selectedMarker.id === marker.id && (
                       <InfoWindowF position={selectedMarker.position}>
@@ -256,12 +270,50 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
             </Card.Content>
           </Card>
           <Modal
+            size="large"
             trigger={
               <Button primary>
                 <p>Show Logs</p>
               </Button>
             }
-          ></Modal>
+            onOpen={async () => {
+              const res = await fetch(
+                "https://anchored.jloh02.dev:8443/logs/err"
+              );
+              setLogs(await res.text());
+            }}
+            onClose={() => setLogs("")}
+            active
+          >
+            <Modal.Header>Logs</Modal.Header>
+            <Modal.Content
+              style={
+                logs.length
+                  ? {}
+                  : {
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      minHeight: 100,
+                    }
+              }
+              scrolling
+            >
+              {logs.length ? (
+                <pre
+                  style={{
+                    whiteSpace: "pre-wrap",
+                  }}
+                >
+                  {logs}
+                </pre>
+              ) : (
+                <Loader active inline>
+                  <p>Loading...</p>
+                </Loader>
+              )}
+            </Modal.Content>
+          </Modal>
         </>
       </Grid.Column>
     </Grid>
