@@ -163,7 +163,13 @@ def main() -> None:
 
     # Run the bot until the user presses Ctrl-C
     if os.environ.get("PORT"): 
-      application.run_webhook(port=os.environ.get("PORT"), allowed_updates=Update.ALL_TYPES)
+      application.run_webhook(
+        listen="127.0.0.1",
+        port=os.environ.get("PORT"), 
+        cert="./certificate.pem", 
+        key="./private_key.pem", 
+        allowed_updates=Update.ALL_TYPES
+      )
     else:  
       application.run_polling(allowed_updates=Update.ALL_TYPES)
     

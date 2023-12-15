@@ -3,3 +3,4 @@ anchored-amazing-race-*.json
 __pycache__
 *.pyc
 .vscode
+*.pem
