@@ -1,9 +1,9 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import {
   GoogleMap,
-  LoadScript,
   MarkerF,
   InfoWindowF,
+  useJsApiLoader,
 } from "@react-google-maps/api";
 import {
   collection,
@@ -14,11 +14,11 @@ import {
   orderBy,
   DocumentReference,
   GeoPoint,
-  getDocs,
   Timestamp,
 } from "firebase/firestore";
+import { Grid, Header, HeaderSubheader, Segment } from "semantic-ui-react";
+import { timeSince } from "./utils.js";
 import dotUrl from "./assets/dot.png";
-import { Grid, Header, Segment } from "semantic-ui-react";
 
 const remove_button_css = `
 .gm-style-iw {
@@ -31,6 +31,7 @@ const remove_button_css = `
 const DEFAULT_CENTER = { lat: 1.3521, lng: 103.8198 };
 
 interface User {
+  username: string;
   group: DocumentReference;
   registered: boolean;
   location: GeoPoint;
@@ -42,25 +43,33 @@ interface Marker {
   position: google.maps.LatLng;
   last_update: Date;
   group_num: number;
+  username: string;
 }
 
 export default function Dashboard({ db }: { db: Firestore | null }) {
-  const userListenerUnsub = useRef<Unsubscribe | undefined>();
-  const groupListenerUnsub = useRef<Unsubscribe | undefined>();
+  const userListenerUnsubRef = useRef<Unsubscribe | undefined>();
+  const groupListenerUnsubRef = useRef<Unsubscribe | undefined>();
 
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState(new Map());
 
+  const { isLoaded } = useJsApiLoader({
+    id: "google-map-script",
+    googleMapsApiKey: import.meta.env.VITE_GMAPS_API_KEY,
+  });
+
   useEffect(() => {
     if (!db) return;
 
-    if (groupListenerUnsub.current) groupListenerUnsub.current();
-    groupListenerUnsub.current = onSnapshot(
+    if (groupListenerUnsubRef.current) groupListenerUnsubRef.current();
+    groupListenerUnsubRef.current = onSnapshot(
       collection(db, "groups"),
       (querySnapshot) => {
         console.log(querySnapshot.size, querySnapshot.metadata);
         const tmpGroups = new Map();
-        querySnapshot.forEach((doc) => tmpGroups.set(doc.id, doc.data()));
+        querySnapshot.forEach((doc) =>
+          tmpGroups.set(parseInt(doc.id), doc.data())
+        );
         console.log(tmpGroups);
         setGroups(tmpGroups);
       },
@@ -69,13 +78,15 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
       }
     );
 
-    if (userListenerUnsub.current) userListenerUnsub.current();
-    userListenerUnsub.current = onSnapshot(
+    if (userListenerUnsubRef.current) userListenerUnsubRef.current();
+    userListenerUnsubRef.current = onSnapshot(
       query(collection(db, "users"), orderBy("location")),
       (querySnapshot) => {
         console.log(querySnapshot.size, querySnapshot.metadata);
         const tmpUsers: User[] = [];
-        querySnapshot.forEach((doc) => tmpUsers.push(doc.data() as User));
+        querySnapshot.forEach((doc) =>
+          tmpUsers.push({ username: doc.id, ...doc.data() } as User)
+        );
         console.log(tmpUsers);
         setUsers(tmpUsers);
       },
@@ -86,6 +97,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
   }, [db]);
 
   const markers = useMemo(() => {
+    if (!isLoaded) return [];
     return users.map<Marker>((user, idx) => {
       return {
         id: idx,
@@ -95,9 +107,10 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         ),
         last_update: user.last_update.toDate(),
         group_num: parseInt(user.group.id),
+        username: user.username,
       };
     });
-  }, [users]);
+  }, [users, isLoaded]);
 
   useEffect(() => {
     console.log(markers, groups, users);
@@ -123,35 +136,56 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         {/* Content of the left column */}
         {/* You can add your components/content here */}
         <Segment style={{ height: "100%", width: "100%" }}>
-          <LoadScript googleMapsApiKey={import.meta.env.VITE_GMAPS_API_KEY}>
-            <style scoped>{remove_button_css}</style>
-            <GoogleMap
-              mapContainerStyle={{ height: "100%", width: "100%" }} //TODO change this to classname
-              center={DEFAULT_CENTER}
-              zoom={13}
-              options={{
-                mapTypeControl: false,
-                streetViewControl: false,
-                mapId: import.meta.env.VITE_MAP_ID,
-              }}
-            >
-              {markers.map((marker) => (
-                <MarkerF
-                  key={marker.id}
-                  position={marker.position}
-                  onMouseOver={() => handleMarkerClick(marker)}
-                  onMouseOut={() => handleInfoWindowClose()}
-                  icon={dotUrl}
-                >
-                  {selectedMarker && selectedMarker.id === marker.id && (
-                    <InfoWindowF position={selectedMarker.position}>
-                      <div>{selectedMarker.last_update.toISOString()}</div>
-                    </InfoWindowF>
-                  )}
-                </MarkerF>
-              ))}
-            </GoogleMap>
-          </LoadScript>
+          {isLoaded && (
+            <>
+              <style scoped>{remove_button_css}</style>
+              <GoogleMap
+                mapContainerStyle={{ height: "100%", width: "100%" }} //TODO change this to classname
+                center={DEFAULT_CENTER}
+                zoom={13}
+                options={{
+                  mapTypeControl: false,
+                  streetViewControl: false,
+                  mapId: import.meta.env.VITE_MAP_ID,
+                }}
+              >
+                {markers.map((marker) => (
+                  <MarkerF
+                    key={marker.id}
+                    position={marker.position}
+                    onMouseOver={() => handleMarkerClick(marker)}
+                    onMouseOut={() => handleInfoWindowClose()}
+                    onClick={() =>
+                      window.open(`https://t.me/${marker.username}`, "_blank")
+                    }
+                    icon={dotUrl}
+                  >
+                    {selectedMarker && selectedMarker.id === marker.id && (
+                      <InfoWindowF position={selectedMarker.position}>
+                        <>
+                          <Header>
+                            {
+                              (groups.get(selectedMarker.group_num) ?? {
+                                name: "unknown",
+                              })["name"]
+                            }
+                          </Header>
+                          <HeaderSubheader>
+                            {"Username: " + selectedMarker.username}
+                          </HeaderSubheader>
+                          <HeaderSubheader>
+                            {"Updated " +
+                              timeSince(selectedMarker.last_update) +
+                              " ago"}
+                          </HeaderSubheader>
+                        </>
+                      </InfoWindowF>
+                    )}
+                  </MarkerF>
+                ))}
+              </GoogleMap>
+            </>
+          )}
         </Segment>
       </Grid.Column>
 
