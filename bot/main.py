@@ -86,8 +86,11 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     logger.info(f"@{update.message.from_user.username} resetted the game state")
 
+    admin_broadcast, admin_broadcast_thread = firebase_util.get_admin_broadcast()
+
     firebase_util.reset()
     await update.message.reply_text("Resetted game state")
+    await context.bot.send_message(admin_broadcast, f"@{update.message.from_user.username} resetted game state", message_thread_id=admin_broadcast_thread)
     return ConversationHandler.END
 
 async def main() -> None:
