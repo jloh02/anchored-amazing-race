@@ -214,8 +214,10 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         }}
       >
         <>
-          <Card>
-            <Card.Content style={{ height: "100%", paddingBottom: "3rem" }}>
+          <Card style={{ height: "100%", width: "100%" }}>
+            <Card.Content
+              style={{ height: "100%", width: "100%", paddingBottom: "3rem" }}
+            >
               <Header>Leaderboard</Header>
               <div
                 style={{
