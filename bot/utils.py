@@ -69,7 +69,7 @@ def challenge_type_to_conv_state(chall_type: ChallengeType):
 
 def get_logs(err: bool):
     try:
-        result = subprocess.run(['pm2', 'logs', 'bot', ('--err' if err else '--out'), '--nostream', '--lines 100'], capture_output=True, text=True)
+        result = subprocess.run(['pm2', 'logs', 'bot', ('--err' if err else '--out'), '--nostream', '--lines', '100'], capture_output=True, text=True)
 
         if result.returncode == 0:
             return result.stdout
