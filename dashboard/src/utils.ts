@@ -1,5 +1,5 @@
 export function getIcon(i: number) {
-  return new URL(`./assets/${i}.png`, import.meta.url).href;
+  return new URL(`./assets/${i}.svg`, import.meta.url).href;
 }
 
 export function timeSince(date: Date) {
@@ -28,3 +28,10 @@ export function timeSince(date: Date) {
   }
   return Math.floor(seconds) + "s";
 }
+
+// def get_start_chall_index(direction: Direction) -> int:
+//     if direction == Direction.A0:
+//         return 1
+//     if direction == Direction.B0:
+//         return NUMBER_LOCATIONS
+//     return 0

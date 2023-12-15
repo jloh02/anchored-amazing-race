@@ -1,4 +1,5 @@
 import os
+import svgwrite
 from PIL import Image, ImageDraw
 
 def generate_colored_circle(hex_code, sz=15,border=2,border_color=(128,128,128)):
@@ -18,10 +19,28 @@ def generate_colored_circle(hex_code, sz=15,border=2,border_color=(128,128,128))
 
     return image
 
+def generate_colored_circle_svg(hex_code, sz=15):
+    # Remove hex
+    hex_code = hex_code[1:]
+
+    dwg = svgwrite.Drawing(size=(sz,sz))
+
+    # Convert hex code to RGB tuple
+    rgb_color = tuple(int(hex_code[i:i+2], 16) for i in (0, 2, 4))
+
+    # Draw a colored circle
+    dwg.add(dwg.ellipse(center=(sz/2,sz/2), r=(sz/2,sz/2),
+                        fill=f'rgb{rgb_color}', stroke='none'))
+
+    return dwg.tostring()
+
 def generate_images(hex_codes, save_path='output'):
     for idx,hex in enumerate(hex_codes):
-        image = generate_colored_circle(hex)
-        image.save(f'{save_path}/{idx}.png')
+        # image = generate_colored_circle(hex)
+        # image.save(f'{save_path}/{idx}.png')
+        with open(f'{save_path}/{idx}.svg', 'w') as svg_file:
+            svg_file.write(generate_colored_circle_svg(hex))
+
 
 if __name__ == "__main__":
     # Replace the hex_codes list with your desired hex codes
