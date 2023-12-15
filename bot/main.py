@@ -89,10 +89,6 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     await update.message.reply_text("Resetted game state")
     return ConversationHandler.END
 
-async def infinity():
-  while True:
-    await asyncio.sleep(1)
-
 async def main() -> None:
     application = (
         Application.builder()
@@ -226,7 +222,7 @@ async def main() -> None:
         await application.initialize()
         await application.start()
         await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-        await infinity()
+        await asyncio.Event().wait()
         await application.updater.stop()
         await application.stop()
         await application.shutdown()
