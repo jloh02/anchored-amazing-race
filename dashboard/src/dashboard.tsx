@@ -294,7 +294,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
               }
               onOpen={async () => {
                 const res = await fetch(
-                  "https://anchored.jloh02.dev:8443/logs/err"
+                  "https://anchored.jloh02.dev/bot/logs/err"
                 );
                 setLogs(await res.text());
               }}
