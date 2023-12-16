@@ -87,7 +87,7 @@ def get_logs(err: bool):
         )
 
         if result.returncode == 0:
-            return result.stdout
+            return result.stdout + result.stderr
         else:
             return f"Error reading logs: {result.stderr}"
 
