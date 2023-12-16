@@ -83,10 +83,11 @@ def get_logs(err: bool):
             ],
             capture_output=True,
             text=True,
+            universal_newlines=True,
         )
 
         if result.returncode == 0:
-            return result.stdout
+            return result.stdout + result.stderr
         else:
             return f"Error reading logs: {result.stderr}"
 
