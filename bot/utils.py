@@ -1,6 +1,7 @@
 import os
 import random
 import subprocess
+import platform
 from functools import reduce
 from telegram import Bot, InputMediaPhoto
 from telegram.ext import ContextTypes
@@ -83,7 +84,7 @@ def get_logs(err: bool):
             ],
             capture_output=True,
             text=True,
-            shell=True,
+            shell=platform.system() != "Linux",
         )
 
         if result.returncode == 0:
