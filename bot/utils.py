@@ -77,6 +77,7 @@ def get_logs(err: bool):
                 "bot",
                 ("--err" if err else "--out"),
                 "--nostream",
+                "--raw",
                 "--lines",
                 "100",
             ],
