@@ -21,7 +21,6 @@ import uvicorn
 from http import HTTPStatus
 from asgiref.wsgi import WsgiToAsgi
 from flask import Flask, Response, make_response, request
-from flask_cors import CORS
 
 from constants import (
     Role,
@@ -91,8 +90,13 @@ async def reset(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 
     firebase_util.reset()
     await update.message.reply_text("Resetted game state")
-    await context.bot.send_message(admin_broadcast, f"@{update.message.from_user.username} resetted game state", message_thread_id=admin_broadcast_thread)
+    await context.bot.send_message(
+        admin_broadcast,
+        f"@{update.message.from_user.username} resetted game state",
+        message_thread_id=admin_broadcast_thread,
+    )
     return ConversationHandler.END
+
 
 async def main() -> None:
     application = (
@@ -104,17 +108,15 @@ async def main() -> None:
     )
 
     await Bot(os.environ.get("TELEGRAM_BOT_KEY")).set_my_commands(
-            [
-                BotCommand("start", "Register user"),
-                BotCommand("configgroup", "Use current chat for group updates"),
-                BotCommand("submit", "Attempt a challenge"),
-                BotCommand("startrace", "Start the race (Only when told to do so)"),
-                BotCommand(
-                    "endrace", "Press at finishing line after challenges completed"
-                ),
-                BotCommand("cancel", "Cancel the command. Also use when bot hangs"),
-            ]
-        )
+        [
+            BotCommand("start", "Register user"),
+            BotCommand("configgroup", "Use current chat for group updates"),
+            BotCommand("submit", "Attempt a challenge"),
+            BotCommand("startrace", "Start the race (Only when told to do so)"),
+            BotCommand("endrace", "Press at finishing line after challenges completed"),
+            BotCommand("cancel", "Cancel the command. Also use when bot hangs"),
+        ]
+    )
 
     conv_handler = ConversationHandler(
         entry_points=[
@@ -184,64 +186,65 @@ async def main() -> None:
     application.add_handler(CallbackQueryHandler(handle_approval, r"chall\|.*"))
 
     # Run the bot until the user presses Ctrl-C
-    if os.environ.get("WEBHOOK_URL"): 
-      flask_app = Flask(__name__)
-      CORS(flask_app, origins=["https://anchored.jloh02.dev"])
+    if os.environ.get("WEBHOOK_URL"):
+        flask_app = Flask(__name__)
 
-      @flask_app.post("/telegram")
-      async def telegram() -> Response:
-          await application.update_queue.put(Update.de_json(data=request.json, bot=application.bot))
-          return Response(status=HTTPStatus.OK)
+        @flask_app.post("/telegram")
+        async def telegram() -> Response:
+            await application.update_queue.put(
+                Update.de_json(data=request.json, bot=application.bot)
+            )
+            return Response(status=HTTPStatus.OK)
 
-      await application.bot.set_webhook(
-        url=f"{os.environ.get('WEBHOOK_URL')}/telegram", 
-        allowed_updates=Update.ALL_TYPES
-      )
-        
-      @flask_app.get("/ping")  
-      async def ping() -> Response:
-          response = make_response("pong", HTTPStatus.OK)
-          response.mimetype = "text/plain"
-          return response
-      
-      @flask_app.get("/logs/err")  
-      async def logs_err() -> Response:
-          response = make_response(get_logs(True), HTTPStatus.OK)
-          response.mimetype = "text/plain"
-          return response
-      
-      @flask_app.get("/logs/out")  
-      async def logs_out() -> Response:
-          response = make_response(get_logs(False), HTTPStatus.OK)
-          response.mimetype = "text/plain"
-          return response
-
-      webserver = uvicorn.Server(
-        config=uvicorn.Config(
-            app=WsgiToAsgi(flask_app),
-            port="8080",
-            use_colors=False,
-            host="0.0.0.0",
+        await application.bot.set_webhook(
+            url=f"{os.environ.get('WEBHOOK_URL')}/telegram",
+            allowed_updates=Update.ALL_TYPES,
         )
-      )
 
-      async with application:
-        await application.initialize()
-        await application.start()
-        await webserver.serve()
-        await application.stop()
-        await application.shutdown()
-    
+        @flask_app.get("/ping")
+        async def ping() -> Response:
+            response = make_response("pong", HTTPStatus.OK)
+            response.mimetype = "text/plain"
+            return response
+
+        @flask_app.get("/logs/err")
+        async def logs_err() -> Response:
+            response = make_response(get_logs(True), HTTPStatus.OK)
+            response.mimetype = "text/plain"
+            return response
+
+        @flask_app.get("/logs/out")
+        async def logs_out() -> Response:
+            response = make_response(get_logs(False), HTTPStatus.OK)
+            response.mimetype = "text/plain"
+            return response
+
+        webserver = uvicorn.Server(
+            config=uvicorn.Config(
+                app=WsgiToAsgi(flask_app),
+                port="8080",
+                use_colors=False,
+                host="0.0.0.0",
+            )
+        )
+
+        async with application:
+            await application.initialize()
+            await application.start()
+            await webserver.serve()
+            await application.stop()
+            await application.shutdown()
+
     else:
-      async with application:
-        await application.initialize()
-        await application.start()
-        await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-        await asyncio.Event().wait()
-        await application.updater.stop()
-        await application.stop()
-        await application.shutdown()
-    
+        async with application:
+            await application.initialize()
+            await application.start()
+            await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
+            await asyncio.Event().wait()
+            await application.updater.stop()
+            await application.stop()
+            await application.shutdown()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
