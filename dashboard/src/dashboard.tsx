@@ -27,6 +27,8 @@ import {
   Modal,
   Segment,
 } from "semantic-ui-react";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import {
   getIcon,
   getProgress,
@@ -75,6 +77,7 @@ interface Marker {
 export default function Dashboard({ db }: { db: Firestore | null }) {
   const userListenerUnsubRef = useRef<Unsubscribe | undefined>();
   const groupListenerUnsubRef = useRef<Unsubscribe | undefined>();
+  const approvalListenerUnsubRef = useRef<Unsubscribe | undefined>();
 
   const [users, setUsers] = useState<User[]>([]);
   const [groups, setGroups] = useState<Map<number, Group>>(new Map());
@@ -121,6 +124,18 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         console.error("Error fetching users: ", error);
       }
     );
+
+    if (approvalListenerUnsubRef.current) approvalListenerUnsubRef.current();
+    approvalListenerUnsubRef.current = onSnapshot(
+      collection(db, "approvals"),
+      (querySnapshot) => {
+        querySnapshot
+          .docChanges()
+          .filter((value) => value.type === "added")
+          .filter((value) => value.doc.id !== "placeholder")
+          .forEach((value) => toast(`New approval request: ${value.doc.id}`));
+      }
+    );
   }, [db]);
 
   const markers = useMemo(() => {
@@ -159,10 +174,12 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
 
   return (
     <Grid style={{ height: "100%", width: "100%" }}>
-      {/* Left Column (80% of the space) */}
       <Grid.Column width={12}>
-        {/* Content of the left column */}
-        {/* You can add your components/content here */}
+        <ToastContainer
+          autoClose={30000}
+          pauseOnHover={false}
+          position="top-left"
+        />
         <Segment style={{ height: "100%", width: "100%" }}>
           {isLoaded && (
             <>
@@ -216,8 +233,6 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
           )}
         </Segment>
       </Grid.Column>
-
-      {/* Right Column (Split into 2 sections) */}
       <Grid.Column
         width={4}
         style={{
