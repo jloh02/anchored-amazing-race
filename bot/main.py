@@ -19,6 +19,7 @@ from telegram.ext import (
 
 import uvicorn
 from http import HTTPStatus
+from flask_cors import CORS
 from asgiref.wsgi import WsgiToAsgi
 from flask import Flask, Response, make_response, request
 
@@ -185,49 +186,48 @@ async def main() -> None:
     application.add_handler(conv_handler)
     application.add_handler(CallbackQueryHandler(handle_approval, r"chall\|.*"))
 
+    flask_app = Flask(__name__)
+
+    @flask_app.post("/telegram")
+    async def telegram() -> Response:
+        await application.update_queue.put(
+            Update.de_json(data=request.json, bot=application.bot)
+        )
+        return Response(status=HTTPStatus.OK)
+
+    @flask_app.get("/ping")
+    async def ping() -> Response:
+        response = make_response("pong", HTTPStatus.OK)
+        response.mimetype = "text/plain"
+        return response
+
+    @flask_app.get("/logs/err")
+    async def logs_err() -> Response:
+        response = make_response(get_logs(True), HTTPStatus.OK)
+        response.mimetype = "text/plain"
+        return response
+
+    @flask_app.get("/logs/out")
+    async def logs_out() -> Response:
+        response = make_response(get_logs(False), HTTPStatus.OK)
+        response.mimetype = "text/plain"
+        return response
+
+    webserver = uvicorn.Server(
+        config=uvicorn.Config(
+            app=WsgiToAsgi(flask_app),
+            port=8080,
+            use_colors=False,
+            host="0.0.0.0",
+        )
+    )
+
     # Run the bot until the user presses Ctrl-C
     if os.environ.get("WEBHOOK_URL"):
-        flask_app = Flask(__name__)
-
-        @flask_app.post("/telegram")
-        async def telegram() -> Response:
-            await application.update_queue.put(
-                Update.de_json(data=request.json, bot=application.bot)
-            )
-            return Response(status=HTTPStatus.OK)
-
         await application.bot.set_webhook(
             url=f"{os.environ.get('WEBHOOK_URL')}/telegram",
             allowed_updates=Update.ALL_TYPES,
         )
-
-        @flask_app.get("/ping")
-        async def ping() -> Response:
-            response = make_response("pong", HTTPStatus.OK)
-            response.mimetype = "text/plain"
-            return response
-
-        @flask_app.get("/logs/err")
-        async def logs_err() -> Response:
-            response = make_response(get_logs(True), HTTPStatus.OK)
-            response.mimetype = "text/plain"
-            return response
-
-        @flask_app.get("/logs/out")
-        async def logs_out() -> Response:
-            response = make_response(get_logs(False), HTTPStatus.OK)
-            response.mimetype = "text/plain"
-            return response
-
-        webserver = uvicorn.Server(
-            config=uvicorn.Config(
-                app=WsgiToAsgi(flask_app),
-                port=8080,
-                use_colors=False,
-                host="0.0.0.0",
-            )
-        )
-
         async with application:
             await application.initialize()
             await application.start()
@@ -236,11 +236,12 @@ async def main() -> None:
             await application.shutdown()
 
     else:
+        CORS(flask_app)
         async with application:
             await application.initialize()
             await application.start()
             await application.updater.start_polling(allowed_updates=Update.ALL_TYPES)
-            await asyncio.Event().wait()
+            await webserver.serve()
             await application.updater.stop()
             await application.stop()
             await application.shutdown()

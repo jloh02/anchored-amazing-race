@@ -19,6 +19,7 @@ import {
 import {
   Button,
   Card,
+  Container,
   Feed,
   Grid,
   Header,
@@ -294,7 +295,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
               }
               onOpen={async () => {
                 const res = await fetch(
-                  "https://anchored.jloh02.dev/bot/logs/err"
+                  `${import.meta.env.VITE_BACKEND_API}logs/err`
                 );
                 setLogs(await res.text());
               }}
@@ -302,33 +303,36 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
               active
             >
               <Modal.Header>Logs</Modal.Header>
-              <Modal.Content
-                style={
-                  logs.length
-                    ? {}
-                    : {
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        minHeight: 100,
-                      }
-                }
-                scrolling
-              >
-                {logs.length ? (
-                  <pre
-                    style={{
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {logs}
-                  </pre>
-                ) : (
-                  <Loader active inline>
-                    <p>Loading...</p>
-                  </Loader>
-                )}
-              </Modal.Content>
+              <Container>
+                <Modal.Content
+                  style={
+                    logs.length
+                      ? {}
+                      : {
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          minHeight: 100,
+                        }
+                  }
+                >
+                  {logs.length ? (
+                    <pre
+                      style={{
+                        whiteSpace: "pre-wrap",
+                        backgroundColor: "black",
+                        color: "white",
+                      }}
+                    >
+                      {logs}
+                    </pre>
+                  ) : (
+                    <Loader active inline>
+                      <p>Loading...</p>
+                    </Loader>
+                  )}
+                </Modal.Content>
+              </Container>
             </Modal>
             <Button
               primary

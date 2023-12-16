@@ -83,6 +83,7 @@ def get_logs(err: bool):
             ],
             capture_output=True,
             text=True,
+            shell=True,
         )
 
         if result.returncode == 0:
