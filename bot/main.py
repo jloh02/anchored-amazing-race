@@ -186,7 +186,7 @@ async def main() -> None:
     # Run the bot until the user presses Ctrl-C
     if os.environ.get("WEBHOOK_URL"): 
       flask_app = Flask(__name__)
-      CORS(flask_app)
+      CORS(flask_app, origins=["https://anchored.jloh02.dev"])
 
       @flask_app.post("/telegram")
       async def telegram() -> Response:
