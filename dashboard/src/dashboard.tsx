@@ -269,51 +269,61 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
               </div>
             </Card.Content>
           </Card>
-          <Modal
-            size="large"
-            trigger={
-              <Button primary>
-                <p>Show Logs</p>
-              </Button>
-            }
-            onOpen={async () => {
-              const res = await fetch(
-                "https://anchored.jloh02.dev:8443/logs/err"
-              );
-              setLogs(await res.text());
-            }}
-            onClose={() => setLogs("")}
-            active
-          >
-            <Modal.Header>Logs</Modal.Header>
-            <Modal.Content
-              style={
-                logs.length
-                  ? {}
-                  : {
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      minHeight: 100,
-                    }
+          <div style={{ display: "flex", width: "100%" }}>
+            <Modal
+              size="large"
+              trigger={
+                <Button primary style={{ flex: 1 }}>
+                  <p>Show Logs</p>
+                </Button>
               }
-              scrolling
+              onOpen={async () => {
+                const res = await fetch(
+                  "https://anchored.jloh02.dev:8443/logs/err"
+                );
+                setLogs(await res.text());
+              }}
+              onClose={() => setLogs("")}
+              active
             >
-              {logs.length ? (
-                <pre
-                  style={{
-                    whiteSpace: "pre-wrap",
-                  }}
-                >
-                  {logs}
-                </pre>
-              ) : (
-                <Loader active inline>
-                  <p>Loading...</p>
-                </Loader>
-              )}
-            </Modal.Content>
-          </Modal>
+              <Modal.Header>Logs</Modal.Header>
+              <Modal.Content
+                style={
+                  logs.length
+                    ? {}
+                    : {
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        minHeight: 100,
+                      }
+                }
+                scrolling
+              >
+                {logs.length ? (
+                  <pre
+                    style={{
+                      whiteSpace: "pre-wrap",
+                    }}
+                  >
+                    {logs}
+                  </pre>
+                ) : (
+                  <Loader active inline>
+                    <p>Loading...</p>
+                  </Loader>
+                )}
+              </Modal.Content>
+            </Modal>
+            <Button
+              primary
+              style={{ flex: 1 }}
+              href="https://t.me/anchored_amazing_race_bot"
+              target="_blank"
+            >
+              <p>Open Bot</p>
+            </Button>
+          </div>
         </>
       </Grid.Column>
     </Grid>
