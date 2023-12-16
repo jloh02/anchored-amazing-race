@@ -291,7 +291,14 @@ async def wait_approval(id: str, timeout: int):
 
     listener = db.collection("approvals").document(id).on_snapshot(update_status)
 
-    await asyncio.wait_for(task_completed_event.wait(), timeout)
+    try:
+      await asyncio.wait_for(task_completed_event.wait(), timeout)
+    except TimeoutError:
+      try:
+        db.collection("approvals").document(id).delete()
+      except RuntimeError:
+        pass
+      raise TimeoutError
 
     return output.get("approved"), output.get("approver")
 
