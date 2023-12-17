@@ -3,6 +3,7 @@ from enum import Enum
 RECENT_LOCATION_MAX_TIME = 300  # seconds
 NUMBER_LOCATIONS = 4
 PHOTO_ROTATION_TIME = 120  # seconds
+MAX_BONUS_GROUPS = 7
 
 END_LAT_LNG = (1.3343111322740955, 103.84651235559575)
 END_TOLERANCE = 30  # m
@@ -10,7 +11,7 @@ END_TOLERANCE = 30  # m
 # Performance tuning
 TELEGRAM_READ_TIMEOUT = 10
 TELEGRAM_CONCURRENT_UPDATES = 16
-CONVERSATION_TIMEOUT = 600
+CONVERSATION_TIMEOUT = 1800  # seconds
 
 
 class Role(Enum):
@@ -27,6 +28,7 @@ class ConvState(str, Enum):
     SubmitText = "SubmitText"
     SubmitPhoto = "SubmitPhoto"
     SubmitVideo = "SubmitVideo"
+    ConfirmBonus = "ConfirmBonus"
 
 
 class ChallengeType(str, Enum):

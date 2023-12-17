@@ -53,6 +53,7 @@ from challenges import (
     submit_video,
     handle_approval,
 )
+from bonus import start_bonus, confirm_bonus
 from misc_commands import end_race
 from utils import get_logs
 
@@ -160,6 +161,15 @@ async def main() -> None:
                     )
                 ),
             ),
+            CommandHandler(
+                "nextbonus",
+                dm_only_command(
+                    role_restricted_command(
+                        start_bonus,
+                        [Role.GL, Role.Admin],  # TODO change this to admin only
+                    )
+                ),
+            ),
             MessageHandler(
                 filters.LOCATION,
                 dm_only_command(
@@ -179,6 +189,7 @@ async def main() -> None:
             ],
             ConvState.SubmitPhoto: [MessageHandler(filters.PHOTO, submit_photo)],
             ConvState.SubmitVideo: [MessageHandler(filters.VIDEO, submit_video)],
+            ConvState.ConfirmBonus: [CallbackQueryHandler(confirm_bonus)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         conversation_timeout=CONVERSATION_TIMEOUT,
@@ -213,17 +224,16 @@ async def main() -> None:
         response.mimetype = "text/plain"
         return response
 
-    webserver = uvicorn.Server(
-        config=uvicorn.Config(
-            app=WsgiToAsgi(flask_app),
-            port=8080,
-            use_colors=False,
-            host="0.0.0.0",
-        )
-    )
-
-    # Run the bot until the user presses Ctrl-C
     if os.environ.get("WEBHOOK_URL"):
+        webserver = uvicorn.Server(
+            config=uvicorn.Config(
+                app=WsgiToAsgi(flask_app),
+                port=8080,
+                use_colors=False,
+                host="0.0.0.0",
+            )
+        )
+
         await application.bot.set_webhook(
             url=f"{os.environ.get('WEBHOOK_URL')}/telegram",
             allowed_updates=Update.ALL_TYPES,
@@ -236,7 +246,16 @@ async def main() -> None:
             await application.shutdown()
 
     else:
+        webserver = uvicorn.Server(
+            config=uvicorn.Config(
+                app=WsgiToAsgi(flask_app),
+                port=8080,
+                use_colors=False,
+                host="127.0.0.1",
+            )
+        )
         CORS(flask_app)
+
         async with application:
             await application.initialize()
             await application.start()

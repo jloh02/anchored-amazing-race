@@ -1,14 +1,23 @@
 import os
 import json
+import logging
 import asyncio
 import datetime
 import firebase_admin
-from constants import Role, Direction, RECENT_LOCATION_MAX_TIME, NUMBER_LOCATIONS
+from constants import (
+    Role,
+    Direction,
+    RECENT_LOCATION_MAX_TIME,
+    NUMBER_LOCATIONS,
+    MAX_BONUS_GROUPS,
+)
 from firebase_admin import credentials, firestore
 
 db = None
 app = None
 broadcast_channel = None
+
+logger = logging.getLogger("firebase")
 
 
 def init():
@@ -25,11 +34,15 @@ def reset():
             list(filter(lambda x: len(x), map(lambda x: x.strip(), f.readlines())))
         ):
             db.collection("groups").document(f"{idx + 1}").set({"name": x})
+    for doc in db.collection("admins").list_documents():
+        doc.delete()
     with open("admins.txt") as f:
         for x in list(
             filter(lambda x: len(x), map(lambda x: x.strip(), f.readlines()))
         ):
             db.collection("admins").document(x).set({"registered": False})
+    for doc in db.collection("users").list_documents():
+        doc.delete()
     with open("gls.json") as f:
         gl = json.loads(f.read())
         for key in gl:
@@ -38,13 +51,18 @@ def reset():
                 db.collection("users").document(user).set(
                     {"registered": False, "group": group_ref}
                 )
+    for doc in db.collection("challenges").list_documents():
+        doc.delete()
+    for doc in db.collection("bonus").list_documents():
+        doc.delete()
     with open("challenges.json") as f:
         challs = json.loads(f.read())
         standard_challs = challs["standard"]
         for key in standard_challs:
             db.collection("challenges").document(key).set(standard_challs[key])
-        db.collection("challenges").document("sabotage").set(
-            {"challenges": challs["sabotage"]}
+        db.collection("challenges").document("bonus").set(challs["bonus"])
+        db.collection("bonus").document("current").set(
+            {"idx": -1, "completed": [-1 for _ in range(MAX_BONUS_GROUPS)]}
         )
     for doc in db.collection("approvals").list_documents():
         doc.delete()
@@ -163,6 +181,7 @@ def start_race(username: str, direction: Direction) -> dict | None:
             "challenges_completed": [],
             "direction": str(direction),
             "race_completed": False,
+            "bonus_completed": 0,
         }
     )
     return group_ref.get().to_dict()
@@ -255,6 +274,11 @@ def get_current_step(
 
 def complete_challenge(username: str, location: str, chall_num: int) -> bool:
     group_ref = get_user_group(username)
+    if location == "bonus":
+        db.collection("bonus").document("current").update(
+            {"completed": firestore.firestore.ArrayUnion([group_ref.id])}
+        )
+        return 9999
     group_ref.update(
         {"challenges_completed": firestore.firestore.ArrayUnion([chall_num])}
     )
@@ -292,13 +316,13 @@ async def wait_approval(id: str, timeout: int):
     listener = db.collection("approvals").document(id).on_snapshot(update_status)
 
     try:
-      await asyncio.wait_for(task_completed_event.wait(), timeout)
+        await asyncio.wait_for(task_completed_event.wait(), timeout)
     except TimeoutError:
-      try:
-        db.collection("approvals").document(id).delete()
-      except RuntimeError:
-        pass
-      raise TimeoutError
+        try:
+            db.collection("approvals").document(id).delete()
+        except RuntimeError:
+            pass
+        raise TimeoutError
 
     return output.get("approved"), output.get("approver")
 
@@ -307,3 +331,53 @@ def update_approval(id: str, approved: bool, username: str):
     db.collection("approvals").document(id).update(
         {"status": True, "approved": approved, "approver": username}
     )
+
+
+def get_current_bonus_challenge() -> dict:
+    bonus = db.collection("bonus").document("current").get().to_dict()
+    idx = bonus.get("idx")
+    if len(bonus.get("completed")) == MAX_BONUS_GROUPS:
+        idx += 1
+        if idx != 0:
+            logger.info(
+                f"Moving next bonus challenge. Previous bonus challenge complete: {bonus.get('completed')}"
+            )
+        db.collection("bonus").document("current").set({"idx": idx, "completed": []})
+    bonus_challs = (
+        db.collection("challenges").document("bonus").get().to_dict()["challenges"]
+    )
+    if len(bonus_challs) == idx:
+        return None
+    return bonus_challs[idx]
+
+
+def has_active_bonus_challenge(username: str, bonus=None) -> dict:
+    if bonus == None:
+        bonus = db.collection("bonus").document("current").get().to_dict()
+
+    if len(bonus.get("completed")) < MAX_BONUS_GROUPS and not get_user_group(
+        username
+    ).id in bonus.get("completed"):
+        return bonus.get("idx")
+    return None
+
+
+def get_active_bonus_challenge(username: str) -> dict:
+    bonus = db.collection("bonus").document("current").get().to_dict()
+    if not has_active_bonus_challenge(username, bonus):
+        return None
+    return (
+        db.collection("challenges")
+        .document("bonus")
+        .get()
+        .to_dict()["challenges"][bonus.get("idx")]
+    )
+
+
+def get_all_group_broadcast() -> list[int]:
+    result = []
+    for doc in db.collection("groups").list_documents():
+        data = doc.get().to_dict()
+        if "broadcast_channel" in data:
+            result.append(data["broadcast_channel"])
+    return result
