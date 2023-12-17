@@ -213,17 +213,16 @@ async def main() -> None:
         response.mimetype = "text/plain"
         return response
 
-    webserver = uvicorn.Server(
-        config=uvicorn.Config(
-            app=WsgiToAsgi(flask_app),
-            port=8080,
-            use_colors=False,
-            host="0.0.0.0",
-        )
-    )
-
-    # Run the bot until the user presses Ctrl-C
     if os.environ.get("WEBHOOK_URL"):
+        webserver = uvicorn.Server(
+            config=uvicorn.Config(
+                app=WsgiToAsgi(flask_app),
+                port=8080,
+                use_colors=False,
+                host="0.0.0.0",
+            )
+        )
+
         await application.bot.set_webhook(
             url=f"{os.environ.get('WEBHOOK_URL')}/telegram",
             allowed_updates=Update.ALL_TYPES,
@@ -236,7 +235,16 @@ async def main() -> None:
             await application.shutdown()
 
     else:
+        webserver = uvicorn.Server(
+            config=uvicorn.Config(
+                app=WsgiToAsgi(flask_app),
+                port=8080,
+                use_colors=False,
+                host="127.0.0.1",
+            )
+        )
         CORS(flask_app)
+
         async with application:
             await application.initialize()
             await application.start()
