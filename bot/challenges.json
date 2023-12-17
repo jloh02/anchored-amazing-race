@@ -4,46 +4,24 @@
       "order": 0,
       "challenges": [
         {
-          "description": "Visit the hexagonal bridge feature across the pond in toa payoh park count the number of hexagons. Perform a dance together that is the number of hexagons * 5 seconds long. eg if there are 5 hexagons, dance up till the 25s mark of the song.\nVideo link: https://youtu.be/Qj1u3Uke_00?si=fOX-vefyQI1ysCRR",
+          "description": "Visit the hexagonal bridge feature across the pond in toa payoh park. Count the number of hexagonal platforms.",
           "steps": [
             {
               "description": "How many hexagon platforms are there?",
               "type": "Text",
-              "answer": "40"
+              "answer": "8"
             },
             {
-              "description": "Send your dance video",
+              "description": "Perform a 40s dance as a group to this video: https://youtube.com/clip/UgkxP3mNA2akCbmwchxBmynaCz9Xcg9izbZw?si=yYO4lPnS5SCyTM_s",
               "type": "Video"
             }
           ]
         },
         {
-          "description": "You have been given a 6x5 piece jigsaw puzzle. Piece together the jigsaw puzzle, recreate the exact same picture of it.",
+          "description": "You have been given a 6x5 piece jigsaw puzzle. Piece together the jigsaw puzzle and recreate the exact same picture of it in front of 'The Climb' sculpture.",
           "steps": [
             {
-              "num_photo": 5,
-              "description": "Send 5 photos",
-              "type": "Photo"
-            }
-          ]
-        },
-        {
-          "description": "Waldo challenge",
-          "steps": [
-            {
-              "description": "Find the unit number and thus store within City Square Mall:\nFor the floor number: Find a fish with its eyes closed\nFor the unit number: Find a fish that is smiling\nAnswer Format: 'xx-xx'",
-              "media": "waldo.jpg",
-              "type": "Text",
-              "answer": "02-03"
-            }
-          ]
-        },
-        {
-          "description": "Find everything challenge",
-          "steps": [
-            {
-              "description": "Take a photo of the number you see on the screen! You've got 2 mins before it changes!",
-              "rotating_media": "rotating",
+              "description": "Send the photo recreating the jigsaw puzzle in front of 'The Climb' sculpture",
               "type": "Photo"
             }
           ]
@@ -54,12 +32,32 @@
       "order": 1,
       "challenges": [
         {
-          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
+          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar. Then go to Fairprice Finest, find and take a pictures of foods that start with every letter of word in Wordle.",
           "steps": [
             {
-              "description": "Send 1",
+              "description": "What's the answer to the Wordle? (Answer in ALL CAPS)",
               "type": "Text",
-              "answer": "1"
+              "answer": "ANCHORED"
+            },
+            {
+              "description": "Send me 8 pictures, 1 for each letter in ANCHORED!",
+              "type": "Photo",
+              "num_photo": 8
+            }
+          ]
+        },
+        {
+          "description": "Based on the following reviews of the place, guess the location:\n\"very accessible and clean. The only Singapore Premier League stadium in 2023 with natural field grass that looks pristine when maintained. Home to the Sailors and temporarily Baletier Khalsa, the food provided during LCS games are also decent. The only drawback would be the interference of the running track as well as the seats being too close for comfort\"",
+          "steps": [
+            {
+              "description": "What's the answer to the riddle? Answer ALL CAPS. The answer is 3 words. Ask @jloh02 for help if needed",
+              "type": "Text",
+              "answer": "BISHAN ACTIVESG STADIUM"
+            },
+            {
+              "description": "Whole group collectively run 400m around the track. Every member must do a different movement type (eg backward run, lunges, skip etc) before pass the phone to signal the next member’s turn.",
+              "type": "Photo",
+              "num_photo": "8"
             }
           ]
         }
@@ -69,12 +67,28 @@
       "order": 2,
       "challenges": [
         {
-          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
+          "description": "Find a red, blue and green logo on a facade of a building that represents the building. You'll be asked to recreate a pose in-front of it",
           "steps": [
             {
-              "description": "Send 1",
+              "description": "Send a photo in front of the logo recreating this pose",
+              "media": "love.png",
+              "type": "Photo"
+            }
+          ]
+        },
+        {
+          "description": "I have many stories but can't utter a word,\nWith shelves full of worlds, yet no wings like a bird.\nWhispers of knowledge, in silence they scream,\nIn my quiet halls, where knowledge is a dream.\nWhat am I?",
+          "steps": [
+            {
+              "description": "What am I? Answer in ALL CAPS. Text @jloh02 if you think you got the answer right",
+              "media": "love.png",
               "type": "Text",
-              "answer": "1"
+              "answer": "LIBRARY"
+            },
+            {
+              "description": "In the library, find 7 different books containing 7 different pictures of creatures/things you can find in the sea. Send me 7 pictures.",
+              "type": "Photo",
+              "num_photo": 7
             }
           ]
         }
@@ -84,12 +98,26 @@
       "order": 3,
       "challenges": [
         {
-          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
+          "description": "Unscramble each word to give a sea creature, then arrange the words in order such that the 1st letter of each word spells the name of a shop in woodleigh mall\n\naunt\nhlofsbib\nsyreot\naynstirg\ntposocu",
           "steps": [
             {
-              "description": "Send 1",
+              "description": "What is the name of the shop? Answer in ALL CAPS",
               "type": "Text",
-              "answer": "1"
+              "answer": "BOOST"
+            },
+            {
+              "description": "Find the shop and take a group photo with it",
+              "type": "Photo"
+            }
+          ]
+        },
+        {
+          "description": "A picture of a store on B2 of Woodleigh mall will be given. You have 2 min to find and take a pic as a group in front of the store shown. If picture is not sent within 2 min, a new store will be given and the 2min timer will reset. This challenge continues until your group manages to get 1 correct answer within the time frame.",
+          "steps": [
+            {
+              "description": "Take a photo of the number you see on the screen! You've got 2 mins before it changes!",
+              "rotating_media": "woodleigh",
+              "type": "Photo"
             }
           ]
         }
@@ -99,21 +127,88 @@
       "order": 4,
       "challenges": [
         {
-          "description": "Solve the wordle: https://mywordle.strivemath.com/?word=wbtkzvar\nGo to Fairprice Finest, find foods that start with every letter of word in wordle. Take a group picture holding all the food items. Foods must be in the order of the letters in word.",
+          "description": "Find a specific store within City Square Mall. /submit to find out more!",
           "steps": [
             {
-              "description": "Send 1",
+              "description": "Find the unit number and store within City Square Mall:\nFor the floor number: Find a fish with its eyes closed\nFor the unit number: Find a fish that is smiling\nAnswer Format: xx-xx, store_name_in_all_caps. Don't forget the space! Ask @jloh02 if you think you got the answer",
+              "media": "waldo.jpg",
               "type": "Text",
-              "answer": "1"
+              "answer": "02-03, DECATHLON"
+            },
+            {
+              "description": "Go to Decathlon. Dress one member in an full outfit of a selected sport. Outfit must include top, bottoms, headgear, shoes and the equipment needed for that sport.",
+              "type": "Photo"
             }
           ]
         }
       ]
     }
   },
-  "sabotage": [
-    "Photograph 3 buses pulling into a bus stop",
-    "Sing any part of camp theme song for 30s",
-    "Whole group to go down a slide together"
-  ]
+  "bonus": {
+    "challenges": [
+      {
+        "description": "Sing any part of camp theme song for 30s",
+        "steps": [
+          {
+            "description": "Send a video of your group singing the camp theme song",
+            "type": "Video"
+          }
+        ]
+      },
+      {
+        "description": "Take a photo with another group",
+        "steps": [
+          {
+            "description": "Send the photo",
+            "type": "Photo"
+          }
+        ]
+      },
+      {
+        "description": "Take a video of your group doing a viral TikTok dance",
+        "steps": [
+          {
+            "description": "Send your TikTok video and go viral!",
+            "type": "Video"
+          }
+        ]
+      },
+      {
+        "description": "Take a jumping picture with your entire group mid-air",
+        "steps": [
+          {
+            "description": "Send your cool photo!",
+            "type": "Photo"
+          }
+        ]
+      },
+      {
+        "description": "Take a group photo with a Christmas tree",
+        "steps": [
+          {
+            "description": "Send your Christmas-sy photo!",
+            "type": "Photo"
+          }
+        ]
+      },
+      {
+        "description": "Take a picture with 3 different kinds of animals",
+        "steps": [
+          {
+            "description": "Send your animal loving photo!",
+            "type": "Photo"
+          }
+        ]
+      },
+      {
+        "description": "Take a panorama shot, everyone except the GL (photographer) must appear twice in the photo.",
+        "steps": [
+          {
+            "description": "Send your duplicating photo and make camp comm confused!",
+            "type": "Photo"
+          }
+        ]
+      }
+    ]
+  }
 }

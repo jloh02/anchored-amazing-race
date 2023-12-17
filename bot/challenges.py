@@ -29,18 +29,20 @@ async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
             text=f"Stop wasting time! Just finish up the race and rest!",
         )
         return ConversationHandler.END
+    chall_buttons = [
+        [InlineKeyboardButton(f"Challenge #{i+1}", callback_data=f"{i}_{location}")]
+        for [i, chall] in challenge
+    ]
+    bonus_idx = firebase_util.has_active_bonus_challenge(
+        update.message.from_user.username
+    )
+    if bonus_idx != None:
+        chall_buttons.append(
+            [InlineKeyboardButton(f"Bonus", callback_data=f"{bonus_idx}_bonus")]
+        )
     await update.message.reply_text(
         text=f"Which challenge do you want to submit?",
-        reply_markup=InlineKeyboardMarkup(
-            [
-                [
-                    InlineKeyboardButton(
-                        f"Challenge #{i+1}", callback_data=f"{i}_{location}"
-                    )
-                ]
-                for [i, chall] in challenge
-            ]
-        ),
+        reply_markup=InlineKeyboardMarkup(chall_buttons),
     )
     return ConvState.SelectChallenge
 
@@ -64,7 +66,9 @@ async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     step_type = ChallengeType[step["type"]]
 
     await query.edit_message_text(
-        text=f"Attempting Challenge #{chall_num+1}",
+        text="Attempting Bonus Challenge"
+        if chall_loc == "bonus"
+        else f"Attempting Challenge #{chall_num+1}",
         reply_markup=None,
     )
 
