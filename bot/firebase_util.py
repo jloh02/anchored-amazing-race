@@ -58,14 +58,12 @@ def set_broadcast_group(username: str, chatid: int):
 def get_admin_broadcast() -> int:
     global broadcast_channel
 
-    return (667443928, None)
+    if broadcast_channel:
+        return broadcast_channel
 
-    # if broadcast_channel:
-    #     return broadcast_channel
-
-    # res = db.collection("admins").document("_globals").get().to_dict()
-    # broadcast_channel = (res.get("broadcast"), res.get("broadcast_thread"))
-    # return broadcast_channel
+    res = db.collection("admins").document("_globals").get().to_dict()
+    broadcast_channel = (res.get("broadcast"), res.get("broadcast_thread"))
+    return broadcast_channel
 
 
 def register_user(username: str, userid: int):
