@@ -303,11 +303,14 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
               active
             >
               <Modal.Header>Logs</Modal.Header>
-              <Container>
+              <Container style={{ maxHeight: "70vh", padding: "2em" }}>
                 <Modal.Content
+		  scrolling
                   style={
                     logs.length
-                      ? {}
+                      ? {
+			  padding: 0
+			}
                       : {
                           display: "flex",
                           alignItems: "center",
@@ -319,6 +322,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                   {logs.length ? (
                     <pre
                       style={{
+			margin: 0,
                         whiteSpace: "pre-wrap",
                         backgroundColor: "black",
                         color: "white",
