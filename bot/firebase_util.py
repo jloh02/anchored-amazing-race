@@ -36,7 +36,7 @@ def reset():
             db.collection("groups").document(f"{idx + 1}").set({"name": x})
     for doc in db.collection("admins").list_documents():
         if doc.id == "_globals":
-            return
+            continue
         doc.delete()
     with open("admins.txt") as f:
         for x in list(
