@@ -99,7 +99,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         console.log(querySnapshot.size, querySnapshot.metadata);
         const tmpGroups = new Map();
         querySnapshot.forEach((doc) =>
-          tmpGroups.set(parseInt(doc.id), doc.data() as Group)
+          tmpGroups.set(doc.id, doc.data() as Group)
         );
         console.log(tmpGroups);
         setGroups(tmpGroups);
@@ -149,7 +149,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
           user.location.longitude
         ),
         last_update: user.last_update.toDate(),
-        group_num: parseInt(user.group.id),
+        group_num: idx,
         username: user.username,
         icon: getIcon(parseInt(user.group.id), true),
       };
@@ -268,11 +268,11 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                     if (progA === progB) return a.name.localeCompare(b.name);
                     return progB - progA;
                   })
-                  .map((group) => (
-                    <Feed>
+                  .map((group, idx) => (
+                    <Feed key={idx}>
                       <Feed.Event style={{ height: "" }}>
                         <Feed.Label
-                          image={getIcon(group.key)}
+                          image={getIcon(idx)}
                           style={{ margin: "auto 0 auto 0" }}
                         />
                         <Feed.Content>
@@ -305,12 +305,12 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
               <Modal.Header>Logs</Modal.Header>
               <Container style={{ maxHeight: "70vh", padding: "2em" }}>
                 <Modal.Content
-		  scrolling
+                  scrolling
                   style={
                     logs.length
                       ? {
-			  padding: 0
-			}
+                          padding: 0,
+                        }
                       : {
                           display: "flex",
                           alignItems: "center",
@@ -322,7 +322,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                   {logs.length ? (
                     <pre
                       style={{
-			margin: 0,
+                        margin: 0,
                         whiteSpace: "pre-wrap",
                         backgroundColor: "black",
                         color: "white",
