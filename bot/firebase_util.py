@@ -29,25 +29,23 @@ def init():
 
 
 def reset():
-    with open("groups.txt") as f:
-        for idx, x in enumerate(
-            list(filter(lambda x: len(x), map(lambda x: x.strip(), f.readlines())))
-        ):
-            db.collection("groups").document(f"{idx + 1}").set({"name": x})
     for doc in db.collection("admins").list_documents():
         if doc.id == "_globals":
-            return
+            continue
         doc.delete()
     with open("admins.txt") as f:
         for x in list(
             filter(lambda x: len(x), map(lambda x: x.strip(), f.readlines()))
         ):
             db.collection("admins").document(x).set({"registered": False})
+    for doc in db.collection("groups").list_documents():
+        doc.delete()
     for doc in db.collection("users").list_documents():
         doc.delete()
     with open("gls.json") as f:
         gl = json.loads(f.read())
         for key in gl:
+            db.collection("groups").document(key).set({"name": key})
             group_ref = db.collection("groups").document(key)
             for user in gl[key]:
                 db.collection("users").document(user).set(
@@ -209,7 +207,6 @@ def get_current_challenge(username: str) -> tuple[str | dict]:
         .stream()
     ):
         challs = doc.to_dict()["challenges"]
-
         return (
             group,
             doc.id,
