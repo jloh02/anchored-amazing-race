@@ -29,6 +29,8 @@ class ConvState(str, Enum):
     SubmitPhoto = "SubmitPhoto"
     SubmitVideo = "SubmitVideo"
     ConfirmBonus = "ConfirmBonus"
+    SelectSkipChallenge = "SelectSkipChallenge"
+    ConfirmSkip = "ConfirmSkip"
 
 
 class ChallengeType(str, Enum):

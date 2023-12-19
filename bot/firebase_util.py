@@ -182,6 +182,7 @@ def start_race(username: str, direction: Direction) -> dict | None:
             "direction": str(direction),
             "race_completed": False,
             "bonus_completed": 0,
+            "challenges_skipped": 0,
         }
     )
     return group_ref.get().to_dict()
@@ -277,6 +278,7 @@ def complete_challenge(username: str, location: str, chall_num: int) -> bool:
         db.collection("bonus").document("current").update(
             {"completed": firestore.firestore.ArrayUnion([group_ref.id])}
         )
+        group_ref.update({"bonus_completed": firestore.firestore.Increment(1)})
         return 9999
     group_ref.update(
         {"challenges_completed": firestore.firestore.ArrayUnion([chall_num])}
@@ -284,6 +286,12 @@ def complete_challenge(username: str, location: str, chall_num: int) -> bool:
     return len(get_challenge(location)["challenges"]) - len(
         group_ref.get().to_dict()["challenges_completed"]
     )
+
+
+def skip_challenge(username: str, location: str, chall_num: int) -> bool:
+    group_ref = get_user_group(username)
+    group_ref.update({"challenges_skipped": firestore.firestore.Increment(1)})
+    return complete_challenge(username, location, chall_num)
 
 
 def generate_approval_request() -> str:
@@ -348,6 +356,12 @@ def get_current_bonus_challenge() -> dict:
     if len(bonus_challs) == idx:
         return None
     return bonus_challs[idx]
+
+
+def get_number_solved_bonus() -> dict:
+    return len(
+        db.collection("bonus").document("current").get().to_dict().get("completed")
+    )
 
 
 def has_active_bonus_challenge(username: str, bonus=None) -> dict:

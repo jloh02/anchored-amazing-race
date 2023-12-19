@@ -48,6 +48,9 @@ from user_setup import (
 from challenges import (
     submit_challenge,
     select_challenge,
+    skip_challenge,
+    select_skip_challenge,
+    confirm_skip,
     submit_photo,
     submit_text,
     submit_video,
@@ -114,6 +117,7 @@ async def main() -> None:
             BotCommand("start", "Register user"),
             BotCommand("configgroup", "Use current chat for group updates"),
             BotCommand("submit", "Attempt a challenge"),
+            BotCommand("skip", "Skip a challenge"),
             BotCommand("startrace", "Start the race (Only when told to do so)"),
             BotCommand("endrace", "Press at finishing line after challenges completed"),
             BotCommand("cancel", "Cancel the command. Also use when bot hangs"),
@@ -162,6 +166,15 @@ async def main() -> None:
                 ),
             ),
             CommandHandler(
+                "skip",
+                dm_only_command(
+                    role_restricted_command(
+                        skip_challenge,
+                        [Role.GL],
+                    )
+                ),
+            ),
+            CommandHandler(
                 "nextbonus",
                 dm_only_command(
                     role_restricted_command(
@@ -190,6 +203,10 @@ async def main() -> None:
             ConvState.SubmitPhoto: [MessageHandler(filters.PHOTO, submit_photo)],
             ConvState.SubmitVideo: [MessageHandler(filters.VIDEO, submit_video)],
             ConvState.ConfirmBonus: [CallbackQueryHandler(confirm_bonus)],
+            ConvState.SelectSkipChallenge: [
+                CallbackQueryHandler(select_skip_challenge)
+            ],
+            ConvState.ConfirmSkip: [CallbackQueryHandler(confirm_skip)],
         },
         fallbacks=[CommandHandler("cancel", cancel)],
         conversation_timeout=CONVERSATION_TIMEOUT,

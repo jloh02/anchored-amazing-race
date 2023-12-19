@@ -10,7 +10,7 @@ from apscheduler.jobstores.base import JobLookupError
 
 import firebase_util
 from utils import send_challenges, challenge_type_to_conv_state, send_step
-from constants import Role, ConvState, ChallengeType
+from constants import Role, ConvState, ChallengeType, MAX_BONUS_GROUPS
 
 logger = logging.getLogger("challenges")
 
@@ -47,6 +47,88 @@ async def submit_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return ConvState.SelectChallenge
 
 
+async def skip_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    logger.info(f"@{update.message.from_user.username} attempting to SKIP a challenge")
+
+    group_info, location, challenge = firebase_util.get_current_challenge(
+        update.message.from_user.username
+    )
+
+    if group_info.get("race_completed"):
+        await update.message.reply_text(
+            text=f"Stop wasting time! Just finish up the race and rest!",
+        )
+        return ConversationHandler.END
+    await update.message.reply_text(
+        text=f"Which challenge do you want to skip?",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [
+                    InlineKeyboardButton(
+                        f"Challenge #{i+1}", callback_data=f"{i}_{location}"
+                    )
+                ]
+                for [i, chall] in challenge
+            ]
+        ),
+    )
+    return ConvState.SelectSkipChallenge
+
+
+async def select_skip_challenge(
+    update: Update, context: ContextTypes.DEFAULT_TYPE
+) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    chall_num, chall_loc = query.data.split("_", 1)
+    chall_num = int(chall_num)
+
+    logger.info(
+        f"@{query.from_user.username} attempting to SKIP a challenge: {chall_loc} #{chall_num+ 1}"
+    )
+
+    await query.edit_message_text(
+        text=f"Are you sure you want to skip Challenge #{chall_num + 1} for 100 points?",
+        reply_markup=InlineKeyboardMarkup(
+            [
+                [InlineKeyboardButton("Yes", callback_data=query.data)],
+                [InlineKeyboardButton("No", callback_data="cancel")],
+            ]
+        ),
+    )
+
+    return ConvState.ConfirmSkip
+
+
+async def confirm_skip(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    query = update.callback_query
+    await query.answer()
+
+    if query.data == "cancel":
+        await query.edit_message_text(text=f"Skip cancelled", reply_markup=None)
+        return ConversationHandler.END
+
+    chall_num, chall_loc = query.data.split("_", 1)
+    chall_num = int(chall_num)
+
+    challs_left = firebase_util.skip_challenge(
+        query.from_user.username,
+        chall_loc,
+        chall_num,
+    )
+
+    logger.info(
+        f"@{query.from_user.username} SKIPPED a challenge: {chall_loc} #{chall_num+1}"
+    )
+
+    await query.edit_message_text(
+        text=f"{chall_loc} Challenge #{chall_num+1} skipped", reply_markup=None
+    )
+
+    return await post_complete_challenge(challs_left, query.from_user.username, context)
+
+
 async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
@@ -81,6 +163,29 @@ async def select_challenge(update: Update, context: ContextTypes.DEFAULT_TYPE) -
     return challenge_type_to_conv_state(step_type)
 
 
+async def post_complete_challenge(
+    challs_left: int, username: str, context: ContextTypes.DEFAULT_TYPE
+):
+    if challs_left <= 0:
+        group_info, loc, challenge = firebase_util.next_location(username)
+        if not challenge:
+            await context.bot.send_message(
+                group_info["broadcast_channel"],
+                "Head back to the endpoint! GO GO GO! The treasure awaits you!",
+            )
+            return ConversationHandler.END
+
+        await send_challenges(
+            context.bot,
+            group_info.get("broadcast_channel"),
+            loc,
+            challenge,
+        )
+        return ConversationHandler.END
+
+    return ConversationHandler.END
+
+
 async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     context.user_data.update({"step_number": context.user_data.get("step_number") + 1})
 
@@ -100,27 +205,16 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         context.user_data.get("challenge_number"),
     )
     await update.message.reply_text("Challenge completed!")
-
-    if challs_left <= 0:
-        group_info, loc, challenge = firebase_util.next_location(
-            update.message.from_user.username
+    if context.user_data.get("challenge_location") == "bonus":
+        admin_broadcast, admin_broadcast_thread = firebase_util.get_admin_broadcast()
+        await context.bot.send_message(
+            admin_broadcast,
+            f"Bonus challenge update: {firebase_util.get_number_solved_bonus()}/{MAX_BONUS_GROUPS}",
+            message_thread_id=admin_broadcast_thread,
         )
-        if not challenge:
-            await context.bot.send_message(
-                group_info["broadcast_channel"],
-                "Head back to the endpoint! GO GO GO! The treasure awaits you!",
-            )
-            return ConversationHandler.END
-
-        await send_challenges(
-            context.bot,
-            group_info.get("broadcast_channel"),
-            loc,
-            challenge,
-        )
-        return ConversationHandler.END
-
-    return ConversationHandler.END
+    return await post_complete_challenge(
+        challs_left, update.message.from_user.username, context
+    )
 
 
 async def submit_text(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
@@ -241,13 +335,15 @@ async def start_approval_process(
         )
         approver_captioned_msg_fn = approver_captioned_msg.edit_caption
 
-    waiting_msg = await update.message.reply_text("Waiting for admin approval...")
+    waiting_msg = await update.message.reply_text(
+        f"Waiting for admin approval (Request ID: {approval_id})..."
+    )
 
     try:
         result, approver = await firebase_util.wait_approval(approval_id, 300)
         if not result:
             await waiting_msg.edit_text(
-                f"Waiting for admin approval...\n\nMan, you got rejected by @{approver}... Try sending another one! :("
+                f"Waiting for admin approval (Request ID: {approval_id})...\n\nMan, you got rejected by @{approver}... Try sending another one! :("
             )
             context.user_data.update({"photos": []})
             return loop_conv_state
