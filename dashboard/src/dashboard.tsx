@@ -186,7 +186,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
             <>
               <style scoped>{custom_css}</style>
               <GoogleMap
-                mapContainerStyle={{ height: "100%", width: "100%" }} //TODO change this to classname
+                mapContainerStyle={{ height: "100%", width: "100%" }}
                 center={DEFAULT_CENTER}
                 zoom={13}
                 options={{
