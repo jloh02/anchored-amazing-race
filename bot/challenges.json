@@ -12,17 +12,8 @@
               "answer": "8"
             },
             {
-              "description": "Perform a 40s dance as a group to this video: https://youtube.com/clip/UgkxP3mNA2akCbmwchxBmynaCz9Xcg9izbZw?si=yYO4lPnS5SCyTM_s",
+              "description": "Perform a 40s dance as a group to this video: https://youtube.com/clip/UgkxP3mNA2akCbmwchxBmynaCz9Xcg9izbZw?si=yYO4lPnS5SCyTM_s. Send the video here!",
               "type": "Video"
-            }
-          ]
-        },
-        {
-          "description": "You have been given a 6x5 piece jigsaw puzzle. Piece together the jigsaw puzzle and recreate the exact same picture of it in front of 'The Climb' sculpture.",
-          "steps": [
-            {
-              "description": "Send the photo recreating the jigsaw puzzle in front of 'The Climb' sculpture",
-              "type": "Photo"
             }
           ]
         }
@@ -130,13 +121,13 @@
           "description": "Find a specific store within City Square Mall. /submit to find out more!",
           "steps": [
             {
-              "description": "Find the unit number and store within City Square Mall:\nFor the floor number: Find a fish with its eyes closed\nFor the unit number: Find a fish that is smiling\nAnswer Format: xx-xx, store_name_in_all_caps. Don't forget the space! Ask @jloh02 if you think you got the answer",
+              "description": "Find the unit number and store within City Square Mall:\nFor the floor number: Find a fish with its eyes closed\nFor the unit number: Find a fish that is smiling\nAnswer Format: xx-xx, STORE_NAME_IN_ALL_CAPS. Don't forget the space after the comma! Ask @jloh02 if you think you got the answer",
               "media": "waldo.jpg",
               "type": "Text",
               "answer": "02-03, DECATHLON"
             },
             {
-              "description": "Go to Decathlon. Dress one member in an full outfit of a selected sport. Outfit must include top, bottoms, headgear, shoes and the equipment needed for that sport.",
+              "description": "Go to Decathlon. Dress one member in an full outfit of a selected sport. Outfit must include top, bottoms, headgear, shoes and the equipment needed for that sport. Send a photo of your coolest sportiest person!",
               "type": "Photo"
             }
           ]
