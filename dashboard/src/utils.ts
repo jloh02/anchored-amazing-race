@@ -75,6 +75,7 @@ export function getProgressStr(group: Group): string {
   const progress = getProgress(group);
 
   if (progress === -1) return "Have not started";
-  if (progress === NUMBER_LOCATIONS + 1) return "Finished race";
+  if (progress === NUMBER_LOCATIONS + 1)
+    return `Finished race (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
   return `${progress} locations finished (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
 }
