@@ -1,7 +1,7 @@
 from enum import Enum
 
 RECENT_LOCATION_MAX_TIME = 300  # seconds
-NUMBER_LOCATIONS = 4
+NUMBER_LOCATIONS = 4  # Outside of TPY (Highest Index)
 PHOTO_ROTATION_TIME = 120  # seconds
 MAX_BONUS_GROUPS = 7
 

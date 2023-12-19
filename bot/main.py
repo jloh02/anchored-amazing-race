@@ -135,7 +135,7 @@ async def main() -> None:
                 "reset",
                 dm_only_command(
                     role_restricted_command(reset, [Role.Admin, Role.GL])
-                ),  # TODO change this to admin only
+                ),  # TODO remove this during game
             ),
             CommandHandler(
                 "startrace",
