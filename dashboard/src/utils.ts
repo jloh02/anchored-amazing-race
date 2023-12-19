@@ -52,6 +52,8 @@ export interface Group {
   direction?: string;
   race_completed?: boolean;
   start_time?: Date;
+  challenges_skipped?: number;
+  bonus_completed?: number;
 }
 
 export function getProgress(group: Group): number {
@@ -74,5 +76,5 @@ export function getProgressStr(group: Group): string {
 
   if (progress === -1) return "Have not started";
   if (progress === NUMBER_LOCATIONS + 1) return "Finished race";
-  return `${progress} locations finished`;
+  return `${progress} locations finished (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
 }
