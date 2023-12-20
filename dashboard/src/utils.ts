@@ -54,6 +54,7 @@ export interface Group {
   start_time?: Date;
   challenges_skipped?: number;
   bonus_completed?: number;
+  end_time?: Date;
 }
 
 export function getProgress(group: Group): number {
@@ -63,7 +64,9 @@ export function getProgress(group: Group): number {
     group.current_location === undefined
   )
     return -1;
-  if ("end_time" in group) return NUMBER_LOCATIONS + 1;
+  if (group.race_completed && group.race_completed == true)
+    return NUMBER_LOCATIONS + 1;
+  if (group.end_time) return NUMBER_LOCATIONS + 2;
 
   return Math.abs(
     (group.current_location - getStartChallIndex(group.direction)) *
@@ -75,7 +78,10 @@ export function getProgressStr(group: Group): string {
   const progress = getProgress(group);
 
   if (progress === -1) return "Have not started";
-  if (progress === NUMBER_LOCATIONS + 1)
+  if (progress === NUMBER_LOCATIONS + 2)
     return `Finished race (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
+
+  if (progress === NUMBER_LOCATIONS + 1)
+    return `${progress} locations finished (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
   return `${progress} locations finished (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
 }
