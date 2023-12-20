@@ -20,6 +20,10 @@ broadcast_channel = None
 logger = logging.getLogger("firebase")
 
 
+group_cache = {}
+challenge_cache = {}
+
+
 def init():
     global app, db
 
@@ -29,6 +33,9 @@ def init():
 
 
 def reset():
+    global group_cache, challenge_cache
+    group_cache = {}
+    challenge_cache = {}
     for doc in db.collection("admins").list_documents():
         if doc.id == "_globals":
             continue
@@ -95,9 +102,6 @@ def register_user(username: str, userid: int):
 
 def register_admin(username: str):
     db.collection("admins").document(username).update({"registered": True})
-
-
-group_cache = {}
 
 
 def get_user_group(username: str) -> firestore.firestore.DocumentReference:
@@ -249,9 +253,6 @@ def next_location(
     )
 
     return (group, None, None) if race_completed else get_current_challenge(username)
-
-
-challenge_cache = {}
 
 
 def get_challenge(location: str):
