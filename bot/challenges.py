@@ -336,21 +336,21 @@ async def start_approval_process(
         approver_captioned_msg_fn = approver_captioned_msg.edit_caption
 
     waiting_msg = await update.message.reply_text(
-        f"Waiting for admin approval (Request ID: {approval_id})..."
+        f"Waiting for admin approval...\n\nRequest ID: {approval_id}"
     )
 
     try:
         result, approver = await firebase_util.wait_approval(approval_id, 300)
         if not result:
             await waiting_msg.edit_text(
-                f"Waiting for admin approval (Request ID: {approval_id})...\n\nMan, you got rejected by @{approver}... Try sending another one! :("
+                f"Waiting for admin approval...\n\n(Request ID: {approval_id})\n\nMan, you got rejected by @{approver}... Try sending another one! :("
             )
             context.user_data.update({"photos": []})
             return loop_conv_state
     except TimeoutError:
         logger.info(f"Approval request {approval_id} timed out")
         await waiting_msg.edit_text(
-            "Waiting for admin approval...\n\nApproval timed out. Call @jloh02 and ask him to pay attention! Then send it again pls"
+            f"Waiting for admin approval...\n\n(Request ID: {approval_id})\n\nApproval timed out. Call @jloh02 and ask him to pay attention! Then send it again pls"
         )
         await approver_captioned_msg_fn(
             f"Haizzz, admins not paying attention... Ask @{update.message.from_user.username} to submit it again"
