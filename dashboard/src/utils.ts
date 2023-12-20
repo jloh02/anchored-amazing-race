@@ -81,7 +81,5 @@ export function getProgressStr(group: Group): string {
   if (progress === NUMBER_LOCATIONS + 2)
     return `Finished race (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
 
-  if (progress === NUMBER_LOCATIONS + 1)
-    return `${progress} locations finished (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
   return `${progress} locations finished (${group.challenges_skipped} skips, ${group.bonus_completed} bonus)`;
 }
