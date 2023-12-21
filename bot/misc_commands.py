@@ -2,6 +2,7 @@ import logging
 from io import BytesIO
 from geopy import distance
 import matplotlib.pyplot as plt
+from matplotlib.font_manager import FontProperties
 from telegram import Update, InputFile
 from telegram.ext import (
     ContextTypes,
@@ -81,10 +82,26 @@ def get_progress_str_with_name(group: dict) -> int:
 
 
 def create_table(data):
-    fig, ax = plt.subplots()
-    ax.axis("tight")
+    fig, ax = plt.subplots(figsize=(10, 10))
+    # ax.axis("tight")
+    table = ax.table(
+        cellText=data,
+        colLabels=["Group", "Status"],
+        cellLoc="center",
+        loc="center",
+        bbox=[0, 0, 1, 1],
+    )
+    fig.tight_layout()
+
+    for (row, col), cell in table.get_celld().items():
+        cell.PAD = 0.5
+        if (row == 0) or (col == -1):
+            cell.set_text_props(fontproperties=FontProperties(weight="bold"))
+
     ax.axis("off")
-    ax.table(cellText=data, colLabels=None, cellLoc="center", loc="center")
+    table.auto_set_font_size(False)
+    table.set_fontsize(14)
+    table.auto_set_column_width(col=list(range(2)))
 
     # Save the table as an image in memory
     buffer = BytesIO()
