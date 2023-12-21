@@ -371,7 +371,7 @@ async def start_approval_process(
         try:
             job.schedule_removal()
         except JobLookupError:
-            logger.warn("Unknown job ID:", job.id)
+            logger.warn("Unknown job ID")
     await waiting_msg.edit_text(
         f"Waiting for admin approval... Approved by @{approver}!"
     )
