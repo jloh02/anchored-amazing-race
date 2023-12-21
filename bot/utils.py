@@ -5,7 +5,13 @@ import platform
 from functools import reduce
 from telegram import Bot, InputMediaPhoto
 from telegram.ext import ContextTypes
-from constants import ConvState, ChallengeType, PHOTO_ROTATION_TIME
+from constants import (
+    ConvState,
+    ChallengeType,
+    Direction,
+    PHOTO_ROTATION_TIME,
+    NUMBER_LOCATIONS,
+)
 
 
 async def send_challenges(bot: Bot, chat_id: int, loc: str, challenges):
@@ -96,3 +102,11 @@ def get_logs(err: bool):
         print(f"An error occurred: {e}")
 
     return "Error"
+
+
+def get_start_chall_index(direction: Direction) -> int:
+    if direction == Direction.A0:
+        return 1
+    if direction == Direction.B0:
+        return NUMBER_LOCATIONS
+    return 0

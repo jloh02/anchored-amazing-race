@@ -58,7 +58,7 @@ from challenges import (
     handle_approval,
 )
 from bonus import start_bonus, confirm_bonus
-from misc_commands import end_race
+from misc_commands import end_race, get_status
 from utils import get_logs
 
 load_dotenv()
@@ -120,6 +120,7 @@ async def main() -> None:
             BotCommand("configgroup", "Use current chat for group updates"),
             BotCommand("submit", "Attempt a challenge"),
             BotCommand("skip", "Skip a challenge"),
+            BotCommand("status", "Find out where other groups are"),
             BotCommand("startrace", "Start the race (Only when told to do so)"),
             BotCommand("endrace", "Press at finishing line after challenges completed"),
             BotCommand("cancel", "Cancel the command. Also use when bot hangs"),
@@ -139,6 +140,7 @@ async def main() -> None:
                     role_restricted_command(reset, [Role.Admin, Role.GL])
                 ),  # TODO remove this during game
             ),
+            CommandHandler("status", get_status),
             CommandHandler(
                 "startrace",
                 dm_only_command(

@@ -1,13 +1,16 @@
 import logging
+from io import BytesIO
 from geopy import distance
-from telegram import Update
+import matplotlib.pyplot as plt
+from telegram import Update, InputFile
 from telegram.ext import (
     ContextTypes,
     ConversationHandler,
 )
 
 import firebase_util
-from constants import END_LAT_LNG, END_TOLERANCE
+from constants import Direction, END_LAT_LNG, END_TOLERANCE, NUMBER_LOCATIONS
+from utils import get_start_chall_index
 
 logger = logging.getLogger("misc")
 
@@ -39,5 +42,63 @@ async def end_race(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     mins_tup = divmod(hours_tup[1], 60)
     await update.message.reply_text(
         f"Congrats! You have finished the race!\n\nTotal time: {int(hours_tup[0])}h {int(mins_tup[0])}min {int(mins_tup[1])}s"
+    )
+    return ConversationHandler.END
+
+
+def get_progress(group: dict) -> int:
+    if (
+        not "start_time" in group
+        or not "direction" in group
+        or not "current_location" in group
+    ):
+        return -1
+    if group.get("race_completed"):
+        return NUMBER_LOCATIONS + 1
+    if group.get("end_time"):
+        return NUMBER_LOCATIONS + 2
+    return abs(
+        (
+            group.get("current_location")
+            - get_start_chall_index(Direction[group.get("direction")])
+        )
+        * (-1 if group.get("direction").at(0) == "B" else 1)
+    )
+
+
+def get_progress_str(group: dict) -> int:
+    prog = get_progress(group)
+
+    if prog == -1:
+        return "Have not started"
+    if prog == NUMBER_LOCATIONS + 2:
+        return "Finished race"
+    return f"{prog} locations finished"
+
+
+def get_progress_str_with_name(group: dict) -> int:
+    return [group.get("name"), get_progress_str(group)]
+
+
+def create_table(data):
+    fig, ax = plt.subplots()
+    ax.axis("tight")
+    ax.axis("off")
+    ax.table(cellText=data, colLabels=None, cellLoc="center", loc="center")
+
+    # Save the table as an image in memory
+    buffer = BytesIO()
+    plt.savefig(buffer, format="png")
+    buffer.seek(0)
+    plt.close()
+
+    return buffer
+
+
+async def get_status(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
+    groups = firebase_util.get_all_group_status()
+
+    await update.message.reply_photo(
+        InputFile(create_table(list(map(get_progress_str_with_name, groups))))
     )
     return ConversationHandler.END

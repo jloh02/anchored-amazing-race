@@ -3,6 +3,7 @@ import json
 import logging
 import asyncio
 import datetime
+from utils import get_start_chall_index
 import firebase_admin
 from constants import (
     Role,
@@ -166,14 +167,6 @@ def has_race_ended(username: str) -> bool:
         return bool(get_user_group(username).get().to_dict()["race_completed"])
     except KeyError:
         return False
-
-
-def get_start_chall_index(direction: Direction) -> int:
-    if direction == Direction.A0:
-        return 1
-    if direction == Direction.B0:
-        return NUMBER_LOCATIONS
-    return 0
 
 
 def start_race(username: str, direction: Direction) -> dict | None:
@@ -399,10 +392,14 @@ def get_active_bonus_challenge(username: str) -> dict:
     )
 
 
+def get_all_group_status() -> list:
+    return [doc.get().to_dict() for doc in db.collection("groups").list_documents()]
+
+
 def get_all_group_broadcast() -> list[int]:
-    result = []
-    for doc in db.collection("groups").list_documents():
-        data = doc.get().to_dict()
-        if "broadcast_channel" in data:
-            result.append(data["broadcast_channel"])
-    return result
+    return list(
+        map(
+            lambda data: data["broadcast_channel"],
+            filter(lambda data: "broadcast_channel" in data, get_all_group_status()),
+        )
+    )
