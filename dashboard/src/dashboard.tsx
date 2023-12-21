@@ -96,12 +96,12 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
     groupListenerUnsubRef.current = onSnapshot(
       collection(db, "groups"),
       (querySnapshot) => {
-        console.log(querySnapshot.size, querySnapshot.metadata);
         const tmpGroups = new Map();
-        querySnapshot.forEach((doc) =>
-          tmpGroups.set(doc.id, doc.data() as Group)
-        );
-        console.log(tmpGroups);
+        let idx = 0;
+        querySnapshot.forEach((doc) => {
+          tmpGroups.set(doc.id, { key: idx, ...doc.data() } as Group);
+          idx++;
+        });
         setGroups(tmpGroups);
       },
       (error) => {
@@ -113,12 +113,10 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
     userListenerUnsubRef.current = onSnapshot(
       query(collection(db, "users"), orderBy("location")),
       (querySnapshot) => {
-        console.log(querySnapshot.size, querySnapshot.metadata);
         const tmpUsers: User[] = [];
         querySnapshot.forEach((doc) =>
           tmpUsers.push({ username: doc.id, ...doc.data() } as User)
         );
-        console.log(tmpUsers);
         setUsers(tmpUsers);
       },
       (error) => {
@@ -151,10 +149,10 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
         group_name: user.group.id,
         last_update: user.last_update.toDate(),
         username: user.username,
-        icon: getIcon(parseInt(user.group.id), true),
+        icon: getIcon(groups.get(user.group.id)?.key ?? 0, true),
       };
     });
-  }, [users, isLoaded]);
+  }, [users, groups, isLoaded]);
 
   useEffect(() => {
     console.log(markers, groups, users);
@@ -266,7 +264,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                     <Feed key={idx}>
                       <Feed.Event style={{ height: "" }}>
                         <Feed.Label
-                          image={getIcon(idx)}
+                          image={getIcon(group.key ?? 0)}
                           style={{ margin: "auto 0 auto 0" }}
                         />
                         <Feed.Content>
