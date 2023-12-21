@@ -27,6 +27,7 @@ from constants import (
     Role,
     ConvState,
     TELEGRAM_READ_TIMEOUT,
+    TELEGRAM_WRITE_TIMEOUT,
     TELEGRAM_CONCURRENT_UPDATES,
     CONVERSATION_TIMEOUT,
 )
@@ -108,6 +109,7 @@ async def main() -> None:
         Application.builder()
         .token(os.environ.get("TELEGRAM_BOT_KEY"))
         .read_timeout(TELEGRAM_READ_TIMEOUT)
+        .write_timeout(TELEGRAM_WRITE_TIMEOUT)
         .concurrent_updates(TELEGRAM_CONCURRENT_UPDATES)
         .build()
     )

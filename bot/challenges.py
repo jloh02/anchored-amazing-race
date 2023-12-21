@@ -207,7 +207,9 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     if context.user_data.get("challenge_location") == "bonus":
         admin_broadcast, admin_broadcast_thread = firebase_util.get_admin_broadcast()
         if not challs_left:
-            await update.message.reply_text("Oh no!!! Unfortunately 7 groups have already completed this challenge!")
+            await update.message.reply_text(
+                "Oh no!!! Unfortunately 7 groups have already completed this challenge!"
+            )
             return ConversationHandler.END
         else:
             await update.message.reply_text("Bonus challenge completed!")
@@ -289,9 +291,10 @@ async def start_approval_process(
             {"photos": context.user_data.get("photos") + [update.message.photo[-1]]}
         )
         photos = context.user_data.get("photos")
-        await update.message.reply_text(
-            f"{len(photos)}/{step['num_photo']} photos received"
-        )
+        if len(photos) < step["num_photo"]:
+            await update.message.reply_text(
+                f"{len(photos)}/{step['num_photo']} photos received"
+            )
         if len(photos) != step["num_photo"]:
             return ConvState.SubmitPhoto
 
