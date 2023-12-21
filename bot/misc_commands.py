@@ -63,7 +63,7 @@ def get_progress(group: dict) -> int:
             group.get("current_location")
             - get_start_chall_index(Direction[group.get("direction")])
         )
-        * (-1 if group.get("direction").at(0) == "B" else 1)
+        * (-1 if group.get("direction")[0] == "B" else 1)
     )
 
 
