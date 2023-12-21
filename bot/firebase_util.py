@@ -276,11 +276,22 @@ def get_current_step(
 def complete_challenge(username: str, location: str, chall_num: int) -> bool:
     group_ref = get_user_group(username)
     if location == "bonus":
+        if (
+            len(
+                db.collection("bonus")
+                .document("current")
+                .get()
+                .to_dict()
+                .get("completed")
+            )
+            >= MAX_BONUS_GROUPS
+        ):
+            return False
         db.collection("bonus").document("current").update(
             {"completed": firestore.firestore.ArrayUnion([group_ref.id])}
         )
         group_ref.update({"bonus_completed": firestore.firestore.Increment(1)})
-        return 9999
+        return True
     group_ref.update(
         {"challenges_completed": firestore.firestore.ArrayUnion([chall_num])}
     )

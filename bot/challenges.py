@@ -204,14 +204,20 @@ async def process_next_step(update: Update, context: ContextTypes.DEFAULT_TYPE) 
         context.user_data.get("challenge_location"),
         context.user_data.get("challenge_number"),
     )
-    await update.message.reply_text("Challenge completed!")
     if context.user_data.get("challenge_location") == "bonus":
         admin_broadcast, admin_broadcast_thread = firebase_util.get_admin_broadcast()
+        if not challs_left:
+            await update.message.reply_text("Oh no!!! Unfortunately 7 groups have already completed this challenge!")
+            return ConversationHandler.END
+        else:
+            await update.message.reply_text("Bonus challenge completed!")
         await context.bot.send_message(
             admin_broadcast,
             f"Bonus challenge update: {firebase_util.get_number_solved_bonus()}/{MAX_BONUS_GROUPS}",
             message_thread_id=admin_broadcast_thread,
         )
+        return ConversationHandler.END
+    await update.message.reply_text("Challenge completed!")
     return await post_complete_challenge(
         challs_left, update.message.from_user.username, context
     )
