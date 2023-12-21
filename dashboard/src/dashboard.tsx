@@ -70,7 +70,7 @@ interface Marker {
   id: number;
   position: google.maps.LatLng;
   last_update: Date;
-  group_num: number;
+  group_name: string;
   username: string;
   icon: string;
 }
@@ -81,7 +81,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
   const approvalListenerUnsubRef = useRef<Unsubscribe | undefined>();
 
   const [users, setUsers] = useState<User[]>([]);
-  const [groups, setGroups] = useState<Map<number, Group>>(new Map());
+  const [groups, setGroups] = useState<Map<string, Group>>(new Map());
   const [logs, setLogs] = useState("");
 
   const { isLoaded } = useJsApiLoader({
@@ -148,8 +148,8 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
           user.location.latitude,
           user.location.longitude
         ),
+        group_name: user.group.id,
         last_update: user.last_update.toDate(),
-        group_num: idx,
         username: user.username,
         icon: getIcon(parseInt(user.group.id), true),
       };
@@ -211,7 +211,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                         <>
                           <Header>
                             {
-                              (groups.get(selectedMarker.group_num) ?? {
+                              (groups.get(selectedMarker.group_name) ?? {
                                 name: "unknown",
                               })["name"]
                             }
@@ -255,13 +255,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
                   overflowY: "scroll",
                 }}
               >
-                {Array.from(groups.entries())
-                  .map(([k, group]) => {
-                    return {
-                      key: k,
-                      ...group,
-                    };
-                  })
+                {Array.from(groups.values())
                   .sort((a, b) => {
                     const progA = getProgress(a);
                     const progB = getProgress(b);
