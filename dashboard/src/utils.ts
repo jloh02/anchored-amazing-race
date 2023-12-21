@@ -62,9 +62,9 @@ export function getProgress(group: Group): number {
     group.current_location === undefined
   )
     return -1;
+  if (group.end_time) return NUMBER_LOCATIONS + 2;
   if (group.race_completed && group.race_completed == true)
     return NUMBER_LOCATIONS + 1;
-  if (group.end_time) return NUMBER_LOCATIONS + 2;
 
   return (
     ((group.current_location - getStartChallIndex(group.direction)) *

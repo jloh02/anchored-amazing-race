@@ -54,10 +54,10 @@ def get_progress(group: dict) -> int:
         or not "current_location" in group
     ):
         return -1
-    if group.get("race_completed"):
-        return NUMBER_LOCATIONS + 1
     if group.get("end_time"):
         return NUMBER_LOCATIONS + 2
+    if group.get("race_completed"):
+        return NUMBER_LOCATIONS + 1
     return (
         (
             group.get("current_location")
