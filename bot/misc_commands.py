@@ -58,13 +58,14 @@ def get_progress(group: dict) -> int:
         return NUMBER_LOCATIONS + 1
     if group.get("end_time"):
         return NUMBER_LOCATIONS + 2
-    return abs(
+    return (
         (
             group.get("current_location")
             - get_start_chall_index(Direction[group.get("direction")])
         )
         * (-1 if group.get("direction")[0] == "B" else 1)
-    )
+        + (NUMBER_LOCATIONS + 1)
+    ) % (NUMBER_LOCATIONS + 1)
 
 
 def get_progress_str(group: dict) -> int:

@@ -66,9 +66,11 @@ export function getProgress(group: Group): number {
     return NUMBER_LOCATIONS + 1;
   if (group.end_time) return NUMBER_LOCATIONS + 2;
 
-  return Math.abs(
-    (group.current_location - getStartChallIndex(group.direction)) *
-      (group.direction.at(0) === "B" ? -1 : 1)
+  return (
+    ((group.current_location - getStartChallIndex(group.direction)) *
+      (group.direction.at(0) === "B" ? -1 : 1) +
+      (NUMBER_LOCATIONS + 1)) %
+    (NUMBER_LOCATIONS + 1)
   );
 }
 
