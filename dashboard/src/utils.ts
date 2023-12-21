@@ -1,8 +1,6 @@
 export function getIcon(i: number, outline?: boolean) {
-  if (i > 16) {
-    i %= 16;
-    i++;
-  }
+  if (i > 15) i %= 15;
+  i++;
 
   return new URL(
     `./assets/${i}${outline ? "_outline" : ""}.svg`,
