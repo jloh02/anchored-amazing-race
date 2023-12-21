@@ -181,7 +181,7 @@ export default function Dashboard({ db }: { db: Firestore | null }) {
           pauseOnHover={false}
           position="top-left"
         />
-        <Segment style={{ height: "100%", width: "100%" }}>
+        <Segment style={{ height: "100%", width: "100%", margin: 0 }}>
           {isLoaded && (
             <>
               <style scoped>{custom_css}</style>
