@@ -136,20 +136,20 @@
   "bonus": {
     "challenges": [
       {
-        "description": "Sing any part of camp theme song for 30s",
-        "steps": [
-          {
-            "description": "Send a video of your group singing the camp theme song",
-            "type": "Video"
-          }
-        ]
-      },
-      {
         "description": "Take a photo with another group",
         "steps": [
           {
             "description": "Send the photo",
             "type": "Photo"
+          }
+        ]
+      },
+      {
+        "description": "Sing any part of camp theme song for 30s",
+        "steps": [
+          {
+            "description": "Send a video of your group singing the camp theme song",
+            "type": "Video"
           }
         ]
       },
