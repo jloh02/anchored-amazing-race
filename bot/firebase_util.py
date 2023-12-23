@@ -345,20 +345,26 @@ def update_approval(id: str, approved: bool, username: str):
     )
 
 
-def get_current_bonus_challenge() -> dict:
+def get_bonus_status() -> str:
+    bonus = db.collection("bonus").document("current").get().to_dict()
+    if bonus.get("idx") < 0:
+        return ""
+    return f"{len(bonus.get('completed'))}/{MAX_BONUS_GROUPS} completed the previous bonus challenge"
+
+
+def get_next_bonus_challenge() -> dict:
     bonus = db.collection("bonus").document("current").get().to_dict()
     idx = bonus.get("idx")
-    if len(bonus.get("completed")) == MAX_BONUS_GROUPS:
-        idx += 1
-        if idx != 0:
-            logger.info(
-                f"Moving next bonus challenge. Previous bonus challenge complete: {bonus.get('completed')}"
-            )
-        db.collection("bonus").document("current").set({"idx": idx, "completed": []})
+    idx += 1
+    if idx != 0:
+        logger.info(
+            f"Moving next bonus challenge. Previous bonus challenge complete: {bonus.get('completed')}"
+        )
+    db.collection("bonus").document("current").set({"idx": idx, "completed": []})
     bonus_challs = (
         db.collection("challenges").document("bonus").get().to_dict()["challenges"]
     )
-    if len(bonus_challs) == idx:
+    if len(bonus_challs) <= idx:
         return None
     return bonus_challs[idx]
 
