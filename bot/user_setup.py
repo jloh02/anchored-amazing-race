@@ -80,7 +80,8 @@ async def start_race(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
             "Your race has already started! Stop wasting time!"
         )
         return ConversationHandler.END
-    await update.message.reply_text(
+    await update.message.reply_photo(
+        open("images/route.png", "rb"),
         "Choose your direction for challenges\n\n/cancel if you have not been authorized to start",
         reply_markup=START_RACE_MARKUP,
     )
@@ -90,8 +91,8 @@ async def start_race(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
 async def choose_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) -> int:
     query = update.callback_query
     await query.answer()
-    await query.edit_message_text(
-        text=f"Confirm Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
+    await query.edit_message_caption(
+        f"Confirm Direction {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
         reply_markup=InlineKeyboardMarkup(
             [
                 [InlineKeyboardButton("Yes", callback_data=query.data)],
@@ -106,11 +107,11 @@ async def confirm_direction(update: Update, context: ContextTypes.DEFAULT_TYPE) 
     query = update.callback_query
     await query.answer()
     if query.data == "cancel":
-        await query.edit_message_text("Start race cancelled", reply_markup=None)
+        await query.edit_message_caption("Start race cancelled", reply_markup=None)
         return ConversationHandler.END
 
-    await query.edit_message_text(
-        text=f"The race begins!\n\nDirection {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
+    await query.edit_message_caption(
+        f"The race begins!\n\nDirection {query.data[0]}, Toa Payoh {'First' if query.data[1] == '1' else 'Last'}",
         reply_markup=None,
     )
 
