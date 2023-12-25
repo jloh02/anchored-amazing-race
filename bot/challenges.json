@@ -172,6 +172,15 @@
         ]
       },
       {
+        "description": "Take a panorama shot, everyone except the GL (photographer) must appear twice in the photo.",
+        "steps": [
+          {
+            "description": "Send your duplicating photo and make camp comm confused!",
+            "type": "Photo"
+          }
+        ]
+      },
+      {
         "description": "Take a group photo with a Christmas tree",
         "steps": [
           {
@@ -185,15 +194,6 @@
         "steps": [
           {
             "description": "Send your animal loving photo!",
-            "type": "Photo"
-          }
-        ]
-      },
-      {
-        "description": "Take a panorama shot, everyone except the GL (photographer) must appear twice in the photo.",
-        "steps": [
-          {
-            "description": "Send your duplicating photo and make camp comm confused!",
             "type": "Photo"
           }
         ]
