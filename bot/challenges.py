@@ -396,7 +396,7 @@ async def handle_approval(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await query.answer()
 
     role = firebase_util.get_role(query.from_user.username)
-    if role != Role.Admin and role != Role.GL:  # TODO Remove GLs
+    if role != Role.Admin:  # and role != Role.GL:  # TODO Remove GLs
         logger.warn(f"Unauthorized approver: @{query.from_user.username} is a {role}")
         return
 

@@ -183,7 +183,9 @@ async def main() -> None:
                 dm_only_command(
                     role_restricted_command(
                         start_bonus,
-                        [Role.GL, Role.Admin],  # TODO change this to admin only
+                        [
+                            Role.Admin
+                        ],  # [Role.GL, Role.Admin],  # TODO change this to admin only
                     )
                 ),
             ),
