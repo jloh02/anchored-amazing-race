@@ -134,12 +134,12 @@ async def main() -> None:
                 "configgroup",
                 role_restricted_command(config_group, [Role.GL]),
             ),
-            CommandHandler(
-                "reset",
-                dm_only_command(
-                    role_restricted_command(reset, [Role.Admin, Role.GL])
-                ),  # TODO remove this during game
-            ),
+            # CommandHandler(
+            #     "reset",
+            #     dm_only_command(
+            #         role_restricted_command(reset, [Role.Admin, Role.GL])
+            #     ),  # TODO remove this during game
+            # ),
             CommandHandler("status", get_status),
             CommandHandler(
                 "startrace",
